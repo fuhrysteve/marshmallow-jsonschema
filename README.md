@@ -18,8 +18,8 @@ or mobile device).
 
 ### Some Client tools can render forms using JSON Schema
 
-https://github.com/jdorn/json-editor
-https://github.com/ulion/jsonform
+* https://github.com/jdorn/json-editor
+* https://github.com/ulion/jsonform
 
 
 ### Example usage
