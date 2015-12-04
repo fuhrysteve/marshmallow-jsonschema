@@ -1,4 +1,4 @@
-from marshmallow_jsonschema.base import dump_schema
+from marshmallow_jsonschema import dump_schema
 
 from . import BaseTest, UserSchema
 
