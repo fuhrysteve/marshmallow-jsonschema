@@ -2,8 +2,7 @@ import datetime
 import uuid
 import decimal
 
-from marshmallow import fields
-from marshmallow.utils import _Missing
+from marshmallow import fields, missing
 
 
 TYPE_MAP = {
@@ -78,6 +77,6 @@ def dump_schema(schema_obj):
             'required': field.required,
             'type': TYPE_MAP[python_type],
         }
-        if not isinstance(field.default, _Missing):
+        if field.default is not missing:
             json_schema['properties'][field.name]['default'] = field.default
     return json_schema
