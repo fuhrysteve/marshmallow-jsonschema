@@ -25,7 +25,7 @@ or mobile device).
 ### Example usage
 
 ```python
-from marshmallow_jsonschema.base import dump_schema
+from marshmallow_jsonschema import dump_schema
 from tests import UserSchema
 
 u = UserSchema()
