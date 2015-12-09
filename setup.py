@@ -19,7 +19,7 @@ setup(
     package_dir={'marshmallow-jsonschema': 'marshmallow-jsonschema'},
     include_package_data=True,
     install_requires=['marshmallow>=2.3.0'],
-    tests_require=['pytest>=2.8', 'jsonschema', 'strict-rfc3339']
+    tests_require=['pytest>=2.8', 'jsonschema', 'strict-rfc3339'],
     license=read('LICENSE'),
     zip_safe=False,
     keywords=('marshmallow-jsonschema marshmallow schema serialization '
