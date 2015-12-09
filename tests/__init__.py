@@ -4,7 +4,7 @@ from marshmallow import Schema, fields, validate
 
 
 class UserSchema(Schema):
-    name = fields.String()
+    name = fields.String(required=True)
     age = fields.Float()
     created = fields.DateTime()
     created_formatted = fields.DateTime(format="%Y-%m-%d", attribute="created")

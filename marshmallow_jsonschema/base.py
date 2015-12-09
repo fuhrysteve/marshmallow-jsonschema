@@ -61,8 +61,8 @@ TYPE_MAP = {
 def dump_schema(schema_obj):
     json_schema = {
         "type": "object",
-        "properties": {
-        }
+        "properties": {},
+        "required": [],
     }
     mapping = {v: k for k, v in schema_obj.TYPE_MAPPING.items()}
     mapping[fields.Email] = str
@@ -74,9 +74,12 @@ def dump_schema(schema_obj):
         python_type = mapping[field.__class__]
         json_schema['properties'][field.name] = {
             'title': field.attribute or field.name,
-            'required': field.required,
-            'type': TYPE_MAP[python_type],
         }
+        for key, val in TYPE_MAP[python_type].items():
+            json_schema['properties'][field.name][key] = val
+            
         if field.default is not missing:
             json_schema['properties'][field.name]['default'] = field.default
+        if field.required:
+            json_schema['required'].append(field.name)
     return json_schema
