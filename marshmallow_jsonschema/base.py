@@ -30,6 +30,7 @@ TYPE_MAP = {
     },
     uuid.UUID: {
         'type': 'string',
+        'format': 'uuid',
     },
     str: {
         'type': 'string',
@@ -39,6 +40,7 @@ TYPE_MAP = {
     },
     decimal.Decimal: {
         'type': 'number',
+        'format': 'decimal',
     },
     set: {
         'type': 'array',
@@ -48,9 +50,11 @@ TYPE_MAP = {
     },
     float: {
         'type': 'number',
+        'format': 'float',
     },
     int: {
-        'type': 'integer',
+        'type': 'number',
+        'format': 'integer',
     },
     bool: {
         'type': 'boolean',
@@ -70,16 +74,37 @@ def dump_schema(schema_obj):
     mapping[fields.List] = list
     mapping[fields.Url] = str
     mapping[fields.LocalDateTime] = datetime.datetime
-    for field_name, field in schema_obj.fields.items():
-        python_type = mapping[field.__class__]
-        json_schema['properties'][field.name] = {
-            'title': field.attribute or field.name,
-        }
-        for key, val in TYPE_MAP[python_type].items():
-            json_schema['properties'][field.name][key] = val
-            
-        if field.default is not missing:
-            json_schema['properties'][field.name]['default'] = field.default
+    for field_name, field in sorted(schema_obj.fields.items()):
+        if field.__class__ in mapping:
+            pytype = mapping[field.__class__]
+            schema = _from_python_type(field, pytype)
+        elif isinstance(field, fields.Nested):
+            schema = _from_nested_schema(field)
+        else:
+            raise ValueError('unsupported field type %s', field)
+        json_schema['properties'][field.name] = schema
         if field.required:
             json_schema['required'].append(field.name)
     return json_schema
+
+
+def _from_python_type(field, pytype):
+    json_schema = {
+        'title': field.attribute or field.name,
+    }
+    for key, val in TYPE_MAP[pytype].items():
+        json_schema[key] = val
+    if field.default is not missing:
+        json_schema['default'] = field.default
+
+    return json_schema
+
+
+def _from_nested_schema(field):
+    schema = dump_schema(field.nested())
+    if field.many:
+        schema = {
+            'type': ["array"] if field.required else ['array', 'null'],
+            'items': schema
+        }
+    return schema

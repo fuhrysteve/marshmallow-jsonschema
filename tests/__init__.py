@@ -3,6 +3,18 @@ import unittest
 from marshmallow import Schema, fields, validate
 
 
+class Address(Schema):
+    id = fields.String(default='no-id')
+    street = fields.String(required=True)
+    number = fields.String(required=True)
+    city = fields.String(required=True)
+    floor = fields.String()
+
+
+class GithubProfile(Schema):
+    uri = fields.String(required=True)
+
+
 class UserSchema(Schema):
     name = fields.String(required=True)
     age = fields.Float()
@@ -26,10 +38,11 @@ class UserSchema(Schema):
     since_created = fields.TimeDelta()
     sex = fields.Str(validate=validate.OneOf(['male', 'female']))
     various_data = fields.Dict()
+    addresses = fields.Nested(Address, many=True)
+    github = fields.Nested(GithubProfile)
 
 
 class BaseTest(unittest.TestCase):
-    
     def setUp(self):
         pass
 
