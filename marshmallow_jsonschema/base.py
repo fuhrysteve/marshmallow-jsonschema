@@ -3,6 +3,10 @@ import uuid
 import decimal
 
 from marshmallow import fields, missing
+from marshmallow.compat import text_type, binary_type
+
+
+__all__ = ['dump_schema']
 
 
 TYPE_MAP = {
@@ -32,10 +36,10 @@ TYPE_MAP = {
         'type': 'string',
         'format': 'uuid',
     },
-    str: {
+    text_type: {
         'type': 'string',
     },
-    bytes: {
+    binary_type: {
         'type': 'string',
     },
     decimal.Decimal: {
@@ -69,10 +73,10 @@ def dump_schema(schema_obj):
         "required": [],
     }
     mapping = {v: k for k, v in schema_obj.TYPE_MAPPING.items()}
-    mapping[fields.Email] = str
+    mapping[fields.Email] = text_type
     mapping[fields.Dict] = dict
     mapping[fields.List] = list
-    mapping[fields.Url] = str
+    mapping[fields.Url] = text_type
     mapping[fields.LocalDateTime] = datetime.datetime
     for field_name, field in sorted(schema_obj.fields.items()):
         if field.__class__ in mapping:
@@ -81,7 +85,7 @@ def dump_schema(schema_obj):
         elif isinstance(field, fields.Nested):
             schema = _from_nested_schema(field)
         else:
-            raise ValueError('unsupported field type %s', field)
+            raise ValueError('unsupported field type %s' % field)
         json_schema['properties'][field.name] = schema
         if field.required:
             json_schema['required'].append(field.name)
