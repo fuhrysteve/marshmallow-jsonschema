@@ -2,11 +2,11 @@ import datetime
 import uuid
 import decimal
 
-from marshmallow import fields, missing
+from marshmallow import fields, missing, Schema
 from marshmallow.compat import text_type, binary_type
 
 
-__all__ = ['dump_schema']
+__all__ = ['JSONSchema']
 
 
 TYPE_MAP = {
@@ -66,30 +66,42 @@ TYPE_MAP = {
 }
 
 
-def dump_schema(schema_obj):
-    json_schema = {
-        "type": "object",
-        "properties": {},
-        "required": [],
-    }
-    mapping = {v: k for k, v in schema_obj.TYPE_MAPPING.items()}
-    mapping[fields.Email] = text_type
-    mapping[fields.Dict] = dict
-    mapping[fields.List] = list
-    mapping[fields.Url] = text_type
-    mapping[fields.LocalDateTime] = datetime.datetime
-    for field_name, field in sorted(schema_obj.fields.items()):
-        if field.__class__ in mapping:
-            pytype = mapping[field.__class__]
-            schema = _from_python_type(field, pytype)
-        elif isinstance(field, fields.Nested):
-            schema = _from_nested_schema(field)
-        else:
-            raise ValueError('unsupported field type %s' % field)
-        json_schema['properties'][field.name] = schema
-        if field.required:
-            json_schema['required'].append(field.name)
-    return json_schema
+class JSONSchema(Schema):
+    properties = fields.Method('get_properties')
+    type = fields.Constant('object')
+    required = fields.Method('get_required')
+
+    def get_properties(self, obj):
+        mapping = {v: k for k, v in obj.TYPE_MAPPING.items()}
+        mapping[fields.Email] = text_type
+        mapping[fields.Dict] = dict
+        mapping[fields.List] = list
+        mapping[fields.Url] = text_type
+        mapping[fields.LocalDateTime] = datetime.datetime
+        properties = {}
+        for field_name, field in sorted(obj.fields.items()):
+            if field.__class__ in mapping:
+                pytype = mapping[field.__class__]
+                schema = _from_python_type(field, pytype)
+            elif isinstance(field, fields.Nested):
+                schema = _from_nested_schema(field)
+            else:
+                raise ValueError('unsupported field type %s' % field)
+            properties[field.name] = schema
+        return properties
+
+    def get_required(self, obj):
+        mapping = {v: k for k, v in obj.TYPE_MAPPING.items()}
+        mapping[fields.Email] = text_type
+        mapping[fields.Dict] = dict
+        mapping[fields.List] = list
+        mapping[fields.Url] = text_type
+        mapping[fields.LocalDateTime] = datetime.datetime
+        required = []
+        for field_name, field in sorted(obj.fields.items()):
+            if field.required:
+                required.append(field.name)
+        return required
 
 
 def _from_python_type(field, pytype):
@@ -105,7 +117,7 @@ def _from_python_type(field, pytype):
 
 
 def _from_nested_schema(field):
-    schema = dump_schema(field.nested())
+    schema = JSONSchema().dump(field.nested()).data
     if field.many:
         schema = {
             'type': ["array"] if field.required else ['array', 'null'],
