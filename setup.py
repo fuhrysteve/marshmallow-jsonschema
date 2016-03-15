@@ -9,7 +9,7 @@ def read(fname):
 
 setup(
     name='marshmallow-jsonschema',
-    version='0.1.0.dev0',
+    version='0.1.0',
     description='JSON Schema Draft v4 (http://json-schema.org/) formatting with marshmallow',
     long_description=read('README.md'),
     author='Stephen Fuhry',

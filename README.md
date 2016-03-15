@@ -1,9 +1,5 @@
 ## marshmallow-jsonschema: JSON Schema formatting with marshmallow
 
-NOTE: This library does not yet have a stable API.
-It is a prototype only still, and not intended for anything resembling production use.
-
-
 [![Build Status](https://travis-ci.org/fuhrysteve/marshmallow-jsonschema.svg?branch=master)](https://travis-ci.org/fuhrysteve/marshmallow-jsonschema)
 
  marshmallow-jsonschema translates marshmallow schemas into
