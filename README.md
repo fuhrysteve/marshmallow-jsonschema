@@ -127,3 +127,30 @@ athlete_schema = AthleteSchema()
 
 athlete_schema.dump(athlete).data
 ```
+
+
+#### Custom Type support
+
+```python
+class Colour(fields.Field):
+
+    def _jsonschema_type_mapping(self):
+        return {
+            'type': 'string',
+        }   
+
+    def _serialize(self, value, attr, obj):
+        r, g, b = value
+        r = hex(r)[2:]
+        g = hex(g)[2:]
+        b = hex(b)[2:]
+        return '#' + r + g + b 
+
+class UserSchema(Schema):
+    name = fields.String(required=True)
+    favourite_colour = Colour()
+
+schema = UserSchema()
+json_schema = JSONSchema()
+json_schema.dump(schema).data
+```

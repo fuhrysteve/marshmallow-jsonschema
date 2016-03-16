@@ -80,7 +80,9 @@ class JSONSchema(Schema):
         mapping[fields.LocalDateTime] = datetime.datetime
         properties = {}
         for field_name, field in sorted(obj.fields.items()):
-            if field.__class__ in mapping:
+            if hasattr(field, '_jsonschema_type_mapping'):
+                schema = field._jsonschema_type_mapping()
+            elif field.__class__ in mapping:
                 pytype = mapping[field.__class__]
                 schema = _from_python_type(field, pytype)
             elif isinstance(field, fields.Nested):

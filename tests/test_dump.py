@@ -1,3 +1,4 @@
+from marshmallow import Schema, fields
 from marshmallow_jsonschema import JSONSchema
 from jsonschema import Draft4Validator
 
@@ -27,3 +28,29 @@ class TestDumpSchema(BaseTest):
         dumped = json_schema.dump(schema).data
         self._validate_schema(dumped)
         self.assertEqual(dumped['properties']['id']['default'], 'no-id')
+
+    def test_unknown_typed_field(self):
+
+        class Colour(fields.Field):
+
+            def _jsonschema_type_mapping(self):
+                return {
+                    'type': 'string',
+                }
+
+            def _serialize(self, value, attr, obj):
+                r, g, b = value
+                r = hex(r)[2:]
+                g = hex(g)[2:]
+                b = hex(b)[2:]
+                return '#' + r + g + b
+
+        class UserSchema(Schema):
+            name = fields.String(required=True)
+            favourite_colour = Colour()
+
+        schema = UserSchema()
+        json_schema = JSONSchema()
+        dumped = json_schema.dump(schema).data
+        self.assertEqual(dumped['properties']['favourite_colour'],
+                        {'type': 'string'})
