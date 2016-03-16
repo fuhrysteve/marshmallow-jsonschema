@@ -131,6 +131,9 @@ athlete_schema.dump(athlete).data
 
 #### Custom Type support
 
+Simply add a `_jsonschema_type_mapping` method to your field
+so we know how it ought to get serialized to JSON Schema.
+
 ```python
 class Colour(fields.Field):
 
