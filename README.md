@@ -28,8 +28,13 @@ pip install marshmallow-jsonschema
 #### Simple Example
 
 ```python
+from marshmallow import Schema, fields
 from marshmallow_jsonschema import JSONSchema
-from tests import UserSchema
+
+class UserSchema(Schema):
+    username = fields.String()
+    age = fields.Integer()
+    birthday = fields.Date()
 
 user_schema = UserSchema()
 
@@ -38,67 +43,14 @@ json_schema.dump(user_schema).data
 ```
 Yields:
 ```python
-{'properties': {'addresses': {'items': {'properties': {'city': {'title': 'city',
-                                                                'type': 'string'},
-                                                       'floor': {'title': 'floor',
-                                                                 'type': 'string'},
-                                                       'id': {'default': 'no-id',
-                                                              'title': 'id',
-                                                              'type': 'string'},
-                                                       'number': {'title': 'number',
-                                                                  'type': 'string'},
-                                                       'street': {'title': 'street',
-                                                                  'type': 'string'}},
-                                        'required': ['city',
-                                                     'number',
-                                                     'street'],
-                                        'type': 'object'},
-                              'type': ['array', 'null']},
-                'age': {'format': 'float', 'title': 'age', 'type': 'number'},
-                'balance': {'format': 'decimal',
-                            'title': 'balance',
-                            'type': 'number'},
-                'birthdate': {'format': 'date',
-                              'title': 'birthdate',
-                              'type': 'string'},
-                'created': {'format': 'date-time',
-                            'title': 'created',
-                            'type': 'string'},
-                'created_formatted': {'format': 'date-time',
-                                      'title': 'created',
-                                      'type': 'string'},
-                'created_iso': {'format': 'date-time',
-                                'title': 'created',
-                                'type': 'string'},
-                'email': {'title': 'email', 'type': 'string'},
-                'finger_count': {'format': 'integer',
-                                 'title': 'finger_count',
-                                 'type': 'number'},
-                'github': {'properties': {'uri': {'title': 'uri',
-                                                  'type': 'string'}},
-                           'required': ['uri'],
-                           'type': 'object'},
-                'hair_colors': {'title': 'hair_colors', 'type': 'array'},
-                'homepage': {'title': 'homepage', 'type': 'string'},
-                'id': {'default': 'no-id', 'title': 'id', 'type': 'string'},
-                'name': {'title': 'name', 'type': 'string'},
-                'registered': {'title': 'registered', 'type': 'boolean'},
-                'sex': {'title': 'sex', 'type': 'string'},
-                'sex_choices': {'title': 'sex_choices', 'type': 'array'},
-                'since_created': {'title': 'since_created', 'type': 'string'},
-                'species': {'title': 'SPECIES', 'type': 'string'},
-                'time_registered': {'format': 'time',
-                                    'title': 'time_registered',
-                                    'type': 'string'},
-                'uid': {'format': 'uuid', 'title': 'uid', 'type': 'string'},
-                'updated': {'format': 'date-time',
-                            'title': 'updated',
-                            'type': 'string'},
-                'updated_local': {'format': 'date-time',
-                                  'title': 'updated',
-                                  'type': 'string'},
-                'various_data': {'title': 'various_data', 'type': 'object'}},
- 'required': ['name'],
+{'properties': {'age': {'format': 'integer',
+                        'title': 'age',
+                        'type': 'number'},
+                'birthday': {'format': 'date',
+                             'title': 'birthday',
+                             'type': 'string'},
+                'username': {'title': 'username', 'type': 'string'}},
+ 'required': [],
  'type': 'object'}
 ```
 
@@ -126,4 +78,65 @@ athlete = Athlete()
 athlete_schema = AthleteSchema()
 
 athlete_schema.dump(athlete).data
+```
+
+#### Complete example Flask application using brutisin/json-forms
+
+```python
+from flask import Flask, jsonify
+from marshmallow import Schema, fields
+from marshmallow_jsonschema import JSONSchema
+
+app = Flask(__name__)
+
+
+class User(object):
+    def __init__(self, name, address):
+        self.name = name
+        self.address = address
+
+
+class UserSchema(Schema):
+    name = fields.String()
+    address = fields.String()
+
+
+@app.route('/')
+def home():
+    return '''<!DOCTYPE html>
+<head>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/brutusin.json-forms/1.3.0/css/brutusin-json-forms.css"><Paste>
+<script src="https://code.jquery.com/jquery-1.12.1.min.js" integrity="sha256-I1nTg78tSrZev3kjvfdM5A5Ak/blglGzlaZANLPDl3I=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.string/3.3.4/underscore.string.min.js"></script>
+<script src="https://cdn.jsdelivr.net/brutusin.json-forms/1.3.0/js/brutusin-json-forms.min.js"></script>
+<script>
+$(document).ready(function() {
+    $.ajax({
+        url: '/schema'
+        , success: function(data) {
+            var container = document.getElementById('myform');
+            var BrutusinForms = brutusin["json-forms"];
+            var bf = BrutusinForms.create(data);
+            bf.render(container);
+        }
+    });
+});
+</script>
+</head>
+<body>
+<div id="myform"></div>
+</body>
+</html>
+'''
+
+
+@app.route('/schema')
+def schema():
+    schema = UserSchema()
+    return jsonify(JSONSchema().dump(schema).data)
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', debug=True)
+
 ```
