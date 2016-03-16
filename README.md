@@ -149,3 +149,33 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
 
 ```
+
+
+#### Custom Type support
+
+Simply add a `_jsonschema_type_mapping` method to your field
+so we know how it ought to get serialized to JSON Schema.
+
+```python
+class Colour(fields.Field):
+
+    def _jsonschema_type_mapping(self):
+        return {
+            'type': 'string',
+        }   
+
+    def _serialize(self, value, attr, obj):
+        r, g, b = value
+        r = hex(r)[2:]
+        g = hex(g)[2:]
+        b = hex(b)[2:]
+        return '#' + r + g + b 
+
+class UserSchema(Schema):
+    name = fields.String(required=True)
+    favourite_colour = Colour()
+
+schema = UserSchema()
+json_schema = JSONSchema()
+json_schema.dump(schema).data
+```
