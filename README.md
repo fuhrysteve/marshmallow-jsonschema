@@ -82,6 +82,9 @@ athlete_schema.dump(athlete).data
 
 #### Complete example Flask application using brutisin/json-forms
 
+![Screenshot]
+(http://i.imgur.com/jJv1wFk.png)
+
 This example renders a form not dissimilar to how [wtforms](https://github.com/wtforms/wtforms) might render a form.
 
 However rather than rendering the form in python, the JSON Schema is rendered using the
