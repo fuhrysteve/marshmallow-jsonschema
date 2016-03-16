@@ -26,7 +26,7 @@ from tests import UserSchema
 
 json_schema = JSONSchema()
 user_schema = UserSchema()
-user_schema.dump(user_schema).data
+json_schema.dump(user_schema).data
 ```
 Yields:
 ```python
