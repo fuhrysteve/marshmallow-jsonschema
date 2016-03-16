@@ -1,0 +1,3 @@
+Flask>=0.10.1
+marshmallow>=2.6.0
+marshmallow-jsonschema>=0.1.6
