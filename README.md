@@ -5,20 +5,26 @@
  marshmallow-jsonschema translates marshmallow schemas into
  JSON Schema Draft v4 compliant jsonschema. See http://json-schema.org/
 
-### Why would I want my schema translated to JSON?
+#### Why would I want my schema translated to JSON?
 
 What are the use cases for this? Let's say you have a
 marshmallow schema in python, but you want to render your
 schema as a form in another system (for example: a web browser
 or mobile device).
 
-### Some Client tools can render forms using JSON Schema
+#### Installation
+
+```
+pip install marshmallow-jsonschema
+```
+
+#### Some Client tools can render forms using JSON Schema
 
 * https://github.com/jdorn/json-editor
 * https://github.com/ulion/jsonform
 
 
-### Simple Example
+#### Simple Example
 
 ```python
 from marshmallow_jsonschema import JSONSchema
@@ -95,7 +101,8 @@ Yields:
  'type': 'object'}
 ```
 
-### Nested Example
+#### Nested Example
+
 ```python
 from marshmallow import Schema, fields
 from marshmallow_jsonschema import JSONSchema
