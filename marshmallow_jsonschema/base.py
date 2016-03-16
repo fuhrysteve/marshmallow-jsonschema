@@ -71,17 +71,13 @@ class JSONSchema(Schema):
     type = fields.Constant('object')
     required = fields.Method('get_required')
 
-    def _get_type_mapping(self, obj):
+    def get_properties(self, obj):
         mapping = {v: k for k, v in obj.TYPE_MAPPING.items()}
         mapping[fields.Email] = text_type
         mapping[fields.Dict] = dict
         mapping[fields.List] = list
         mapping[fields.Url] = text_type
         mapping[fields.LocalDateTime] = datetime.datetime
-        return mapping
-
-    def get_properties(self, obj):
-        mapping = self._get_type_mapping(obj)
         properties = {}
         for field_name, field in sorted(obj.fields.items()):
             if field.__class__ in mapping:
@@ -95,7 +91,6 @@ class JSONSchema(Schema):
         return properties
 
     def get_required(self, obj):
-        mapping = self._get_type_mapping(obj)
         required = []
         for field_name, field in sorted(obj.fields.items()):
             if field.required:
