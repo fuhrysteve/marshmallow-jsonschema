@@ -18,14 +18,15 @@ or mobile device).
 * https://github.com/ulion/jsonform
 
 
-### Example usage
+### Simple Example
 
 ```python
 from marshmallow_jsonschema import JSONSchema
 from tests import UserSchema
 
-json_schema = JSONSchema()
 user_schema = UserSchema()
+
+json_schema = JSONSchema()
 json_schema.dump(user_schema).data
 ```
 Yields:
@@ -92,4 +93,29 @@ Yields:
                 'various_data': {'title': 'various_data', 'type': 'object'}},
  'required': ['name'],
  'type': 'object'}
+```
+
+### Nested Example
+```python
+from marshmallow import Schema, fields
+from marshmallow_jsonschema import JSONSchema
+from tests import UserSchema
+
+
+class Athlete(object):
+    user_schema = UserSchema()
+
+    def __init__(self):
+        self.name = 'sam'
+
+
+class AthleteSchema(Schema):
+    user_schema = fields.Nested(JSONSchema)
+    name = fields.String()
+
+    
+athlete = Athlete()
+athlete_schema = AthleteSchema()
+
+athlete_schema.dump(athlete).data
 ```
