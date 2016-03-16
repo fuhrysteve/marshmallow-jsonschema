@@ -3,15 +3,19 @@ from setuptools import setup, find_packages
 
 def read(fname):
     with open(fname) as fp:
-        content = fp.read()
-    return content
+        return fp.read()
 
+try:
+    import pypandoc
+    long_description = pypandoc.convert('README.md', 'rst')
+except (IOError, ImportError):
+    long_description = read(long_description)
 
 setup(
     name='marshmallow-jsonschema',
-    version='0.1.0',
+    version='0.1.2',
     description='JSON Schema Draft v4 (http://json-schema.org/) formatting with marshmallow',
-    long_description=read('README.md'),
+    long_description=long_description,
     author='Stephen Fuhry',
     author_email='fuhrysteve@gmail.com',
     url='https://github.com/fuhrysteve/marshmallow-jsonschema',
