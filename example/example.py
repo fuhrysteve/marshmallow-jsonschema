@@ -5,15 +5,15 @@ from marshmallow_jsonschema import JSONSchema
 app = Flask(__name__)
 
 
-class User(object):
-    def __init__(self, name, address):
-        self.name = name
-        self.address = address
-
-
 class UserSchema(Schema):
     name = fields.String()
     address = fields.String()
+
+
+@app.route('/schema')
+def schema():
+    schema = UserSchema()
+    return jsonify(JSONSchema().dump(schema).data)
 
 
 @app.route('/')
@@ -43,13 +43,6 @@ $(document).ready(function() {
 </body>
 </html>
 '''
-
-
-@app.route('/schema')
-def schema():
-    schema = UserSchema()
-    return jsonify(JSONSchema().dump(schema).data)
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
