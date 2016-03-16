@@ -9,7 +9,7 @@ try:
     import pypandoc
     long_description = pypandoc.convert('README.md', 'rst')
 except (IOError, ImportError):
-    long_description = read(long_description)
+    long_description = read('README.md')
 
 setup(
     name='marshmallow-jsonschema',
