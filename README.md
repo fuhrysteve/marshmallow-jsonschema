@@ -151,13 +151,17 @@ if __name__ == '__main__':
 Simply add a `_jsonschema_type_mapping` method to your field
 so we know how it ought to get serialized to JSON Schema.
 
+A common use case for this is creating a dropdown menu using
+enum (see Gender below).
+
+
 ```python
 class Colour(fields.Field):
 
     def _jsonschema_type_mapping(self):
         return {
             'type': 'string',
-        }   
+        }
 
     def _serialize(self, value, attr, obj):
         r, g, b = value
@@ -166,9 +170,18 @@ class Colour(fields.Field):
         b = hex(b)[2:]
         return '#' + r + g + b 
 
+class Gender(fields.String):
+    def _jsonschema_type_mapping(self):
+        return {
+            'type': 'string',
+            'enum': ['Male', 'Female']
+        }
+
+
 class UserSchema(Schema):
     name = fields.String(required=True)
     favourite_colour = Colour()
+    gender = Gender()
 
 schema = UserSchema()
 json_schema = JSONSchema()
