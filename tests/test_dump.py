@@ -29,6 +29,20 @@ class TestDumpSchema(BaseTest):
         self._validate_schema(dumped)
         self.assertEqual(dumped['properties']['id']['default'], 'no-id')
 
+    def test_unknown_typed_field_throws_valueerror(self):
+
+        class Invalid(fields.Field):
+            def _serialize(self, value, attr, obj):
+                return value
+
+        class UserSchema(Schema):
+            favourite_colour = Invalid()
+
+        schema = UserSchema()
+        json_schema = JSONSchema()
+        with self.assertRaises(ValueError):
+            dumped = json_schema.dump(schema).data
+
     def test_unknown_typed_field(self):
 
         class Colour(fields.Field):
