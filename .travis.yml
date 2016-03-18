@@ -14,7 +14,7 @@ before_install:
 
 install:
   - pip install -U .[reco]
-  - pip install strict-rfc3339 jsonschema
-  - python setup.py test
+  - pip install strict-rfc3339 jsonschema coveralls
 
-script: py.test
+script: coverage run --source marshmallow_jsonschema -m py.test
+after_success: coveralls

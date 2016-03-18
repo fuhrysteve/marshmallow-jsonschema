@@ -1,6 +1,7 @@
 ## marshmallow-jsonschema: JSON Schema formatting with marshmallow
 
 [![Build Status](https://travis-ci.org/fuhrysteve/marshmallow-jsonschema.svg?branch=master)](https://travis-ci.org/fuhrysteve/marshmallow-jsonschema)
+[![Coverage Status](https://coveralls.io/repos/github/fuhrysteve/marshmallow-jsonschema/badge.svg?branch=master)](https://coveralls.io/github/fuhrysteve/marshmallow-jsonschema?branch=master)
 
  marshmallow-jsonschema translates marshmallow schemas into
  JSON Schema Draft v4 compliant jsonschema. See http://json-schema.org/
