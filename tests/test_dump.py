@@ -67,4 +67,23 @@ class TestDumpSchema(BaseTest):
         json_schema = JSONSchema()
         dumped = json_schema.dump(schema).data
         self.assertEqual(dumped['properties']['favourite_colour'],
-                        {'type': 'string'})
+                         {'type': 'string'})
+
+    def test_property_order(self):
+
+        class UserSchema(Schema):
+            first = fields.String()
+            second = fields.String()
+            third = fields.String()
+            fourth = fields.String()
+
+            class Meta:
+                ordered = True
+
+        schema = UserSchema()
+        json_schema = JSONSchema()
+        dumped = json_schema.dump(schema).data
+        self.assertEqual(dumped['properties']['first']['propertyOrder'], 1)
+        self.assertEqual(dumped['properties']['second']['propertyOrder'], 2)
+        self.assertEqual(dumped['properties']['third']['propertyOrder'], 3)
+        self.assertEqual(dumped['properties']['fourth']['propertyOrder'], 4)

@@ -1,6 +1,7 @@
 import datetime
 import uuid
 import decimal
+from collections import OrderedDict
 
 from marshmallow import fields, missing, Schema
 from marshmallow.compat import text_type, binary_type
@@ -78,8 +79,11 @@ class JSONSchema(Schema):
         mapping[fields.List] = list
         mapping[fields.Url] = text_type
         mapping[fields.LocalDateTime] = datetime.datetime
-        properties = {}
-        for field_name, field in sorted(obj.fields.items()):
+        if obj.ordered:
+            properties = OrderedDict()
+        else:
+            properties = {}
+        for count, (field_name, field) in enumerate(obj.fields.items()):
             if hasattr(field, '_jsonschema_type_mapping'):
                 schema = field._jsonschema_type_mapping()
             elif field.__class__ in mapping:
@@ -89,6 +93,8 @@ class JSONSchema(Schema):
                 schema = _from_nested_schema(field)
             else:
                 raise ValueError('unsupported field type %s' % field)
+            if obj.ordered:
+                schema['propertyOrder'] = count + 1
             properties[field.name] = schema
         return properties
 
