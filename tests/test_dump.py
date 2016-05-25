@@ -29,6 +29,26 @@ class TestDumpSchema(BaseTest):
         self._validate_schema(dumped)
         self.assertEqual(dumped['properties']['id']['default'], 'no-id')
 
+    def test_descriptions(self):
+        class TestSchema(Schema):
+            myfield = fields.String(metadata={'description': 'Brown Cow'})
+            yourfield = fields.Integer(required=True)
+        schema = TestSchema()
+        json_schema = JSONSchema()
+        dumped = json_schema.dump(schema).data
+        self._validate_schema(dumped)
+        assert dumped['properties']['myfield']['description'] == 'Brown Cow'
+
+    def test_title(self):
+        class TestSchema(Schema):
+            myfield = fields.String(metadata={'title': 'Brown Cowzz'})
+            yourfield = fields.Integer(required=True)
+        schema = TestSchema()
+        json_schema = JSONSchema()
+        dumped = json_schema.dump(schema).data
+        self._validate_schema(dumped)
+        assert dumped['properties']['myfield']['title'] == 'Brown Cowzz'
+
     def test_unknown_typed_field_throws_valueerror(self):
 
         class Invalid(fields.Field):

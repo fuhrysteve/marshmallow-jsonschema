@@ -109,14 +109,22 @@ def _from_python_type(field, pytype):
     if field.default is not missing:
         json_schema['default'] = field.default
 
+    if field.metadata.get('metadata', {}).get('description'):
+        json_schema['description'] = field.metadata['metadata'].get('description')
+    if field.metadata.get('metadata', {}).get('title'):
+        json_schema['title'] = field.metadata['metadata'].get('title')
     return json_schema
 
 
 def _from_nested_schema(field):
     schema = JSONSchema().dump(field.nested()).data
+    if field.metadata.get('metadata', {}).get('description'):
+        schema['description'] = field.metadata['metadata'].get('description')
+    if field.metadata.get('metadata', {}).get('title'):
+        schema['title'] = field.metadata['metadata'].get('title')
     if field.many:
         schema = {
             'type': ["array"] if field.required else ['array', 'null'],
-            'items': schema
+            'items': schema,
         }
     return schema
