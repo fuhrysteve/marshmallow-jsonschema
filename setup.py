@@ -13,7 +13,7 @@ except (IOError, ImportError):
 
 setup(
     name='marshmallow-jsonschema',
-    version='0.1.7',
+    version='0.2.0',
     description='JSON Schema Draft v4 (http://json-schema.org/) formatting with marshmallow',
     long_description=long_description,
     author='Stephen Fuhry',
