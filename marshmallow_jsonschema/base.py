@@ -2,8 +2,10 @@ import datetime
 import uuid
 import decimal
 
-from marshmallow import fields, missing, Schema
+from marshmallow import fields, missing, Schema, validate
 from marshmallow.compat import text_type, binary_type
+
+from .validation import handle_length, handle_one_of, handle_range
 
 
 __all__ = ['JSONSchema']
@@ -66,6 +68,13 @@ TYPE_MAP = {
 }
 
 
+FIELD_VALIDATORS = {
+    validate.Length: handle_length,
+    validate.OneOf: handle_one_of,
+    validate.Range: handle_range,
+}
+
+
 class JSONSchema(Schema):
     properties = fields.Method('get_properties')
     type = fields.Constant('object')
@@ -79,6 +88,7 @@ class JSONSchema(Schema):
         mapping[fields.Url] = text_type
         mapping[fields.LocalDateTime] = datetime.datetime
         properties = {}
+
         for field_name, field in sorted(obj.fields.items()):
             if hasattr(field, '_jsonschema_type_mapping'):
                 schema = field._jsonschema_type_mapping()
@@ -89,14 +99,25 @@ class JSONSchema(Schema):
                 schema = self._from_nested_schema(field)
             else:
                 raise ValueError('unsupported field type %s' % field)
+
+            # Apply any and all validators that field may have
+            for validator in field.validators:
+                if validator.__class__ in FIELD_VALIDATORS:
+                    schema = FIELD_VALIDATORS[validator.__class__](
+                        schema, field, validator, obj
+                    )
+
             properties[field.name] = schema
+
         return properties
 
     def get_required(self, obj):
         required = []
+
         for field_name, field in sorted(obj.fields.items()):
             if field.required:
                 required.append(field.name)
+
         return required
 
     @classmethod
