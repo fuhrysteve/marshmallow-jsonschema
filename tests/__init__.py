@@ -8,7 +8,7 @@ class Address(Schema):
     street = fields.String(required=True)
     number = fields.String(required=True)
     city = fields.String(required=True)
-    floor = fields.String()
+    floor = fields.Integer(validate=validate.Range(min=1, max=4))
 
 
 class GithubProfile(Schema):
@@ -16,7 +16,8 @@ class GithubProfile(Schema):
 
 
 class UserSchema(Schema):
-    name = fields.String(required=True)
+    name = fields.String(required=True,
+                         validate=validate.Length(min=1, max=255))
     age = fields.Float()
     created = fields.DateTime()
     created_formatted = fields.DateTime(format="%Y-%m-%d", attribute="created")
@@ -38,8 +39,10 @@ class UserSchema(Schema):
     since_created = fields.TimeDelta()
     sex = fields.Str(validate=validate.OneOf(['male', 'female']))
     various_data = fields.Dict()
-    addresses = fields.Nested(Address, many=True)
+    addresses = fields.Nested(Address, many=True,
+                              validate=validate.Length(min=1, max=3))
     github = fields.Nested(GithubProfile)
+    const = fields.String(validate=validate.Length(equal=50))
 
 
 class BaseTest(unittest.TestCase):

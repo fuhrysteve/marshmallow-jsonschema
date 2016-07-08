@@ -2,7 +2,7 @@ from marshmallow import Schema, fields
 from marshmallow_jsonschema import JSONSchema
 from jsonschema import Draft4Validator
 
-from . import BaseTest, UserSchema
+from . import BaseTest, UserSchema, Address
 
 
 class TestDumpSchema(BaseTest):
@@ -39,6 +39,34 @@ class TestDumpSchema(BaseTest):
         self._validate_schema(dumped)
         assert dumped['properties']['myfield']['description'] == 'Brown Cow'
 
+    def test_one_of_validator(self):
+        schema = UserSchema()
+        json_schema = JSONSchema()
+        dumped = json_schema.dump(schema).data
+        self._validate_schema(dumped)
+        self.assertEqual(dumped['properties']['sex']['enum'],
+                         ['male', 'female'])
+
+    def test_range_validator(self):
+        schema = Address()
+        json_schema = JSONSchema()
+        dumped = json_schema.dump(schema).data
+        self._validate_schema(dumped)
+        self.assertEqual(dumped['properties']['floor']['minimum'], 1)
+        self.assertEqual(dumped['properties']['floor']['maximum'], 4)
+
+    def test_length_validator(self):
+        schema = UserSchema()
+        json_schema = JSONSchema()
+        dumped = json_schema.dump(schema).data
+        self._validate_schema(dumped)
+        self.assertEqual(dumped['properties']['name']['minLength'], 1)
+        self.assertEqual(dumped['properties']['name']['maxLength'], 255)
+        self.assertEqual(dumped['properties']['addresses']['minItems'], 1)
+        self.assertEqual(dumped['properties']['addresses']['maxItems'], 3)
+        self.assertEqual(dumped['properties']['const']['minLength'], 50)
+        self.assertEqual(dumped['properties']['const']['maxLength'], 50)
+
     def test_title(self):
         class TestSchema(Schema):
             myfield = fields.String(metadata={'title': 'Brown Cowzz'})
@@ -47,7 +75,7 @@ class TestDumpSchema(BaseTest):
         json_schema = JSONSchema()
         dumped = json_schema.dump(schema).data
         self._validate_schema(dumped)
-        assert dumped['properties']['myfield']['title'] == 'Brown Cowzz'
+        dumped['properties']['myfield']['title'] == 'Brown Cowzz'
 
     def test_unknown_typed_field_throws_valueerror(self):
 
@@ -61,7 +89,7 @@ class TestDumpSchema(BaseTest):
         schema = UserSchema()
         json_schema = JSONSchema()
         with self.assertRaises(ValueError):
-            dumped = json_schema.dump(schema).data
+            json_schema.dump(schema).data
 
     def test_unknown_typed_field(self):
 
@@ -87,4 +115,4 @@ class TestDumpSchema(BaseTest):
         json_schema = JSONSchema()
         dumped = json_schema.dump(schema).data
         self.assertEqual(dumped['properties']['favourite_colour'],
-                        {'type': 'string'})
+                         {'type': 'string'})

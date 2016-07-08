@@ -3,7 +3,8 @@ from marshmallow import fields
 
 def handle_length(schema, field, validator, parent_schema):
     """Adds validation logic for ``marshmallow.validate.Length``, setting the
-    values appropriately for ``fields.List`` and ``fields.String``.
+    values appropriately for ``fields.List``, ``fields.Nested``, and
+    ``fields.String``.
 
     Args:
         schema (dict): The original JSON schema we generated. This is what we
@@ -20,13 +21,13 @@ def handle_length(schema, field, validator, parent_schema):
             altered.
 
     Raises:
-        ValueError: Raised if the `field` is something other than `fields.List`
-            or `fields.String`
+        ValueError: Raised if the `field` is something other than
+            `fields.List`, `fields.Nested`, or `fields.String`
     """
     if isinstance(field, fields.String):
         minKey = 'minLength'
         maxKey = 'maxLength'
-    elif isinstance(field, fields.List):
+    elif isinstance(field, (fields.List, fields.Nested)):
         minKey = 'minItems'
         maxKey = 'maxItems'
     else:
@@ -101,3 +102,5 @@ def handle_range(schema, field, validator, parent_schema):
     if validator.max:
         schema['maximum'] = validator.max
         schema['exclusiveMaximum'] = True
+
+    return schema
