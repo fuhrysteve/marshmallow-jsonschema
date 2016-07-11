@@ -75,7 +75,8 @@ class TestDumpSchema(BaseTest):
         json_schema = JSONSchema()
         dumped = json_schema.dump(schema).data
         self._validate_schema(dumped)
-        dumped['properties']['myfield']['title'] == 'Brown Cowzz'
+        self.assertEqual(dumped['properties']['myfield']['title'],
+                         'Brown Cowzz')
 
     def test_unknown_typed_field_throws_valueerror(self):
 
