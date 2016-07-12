@@ -94,9 +94,9 @@ class JSONSchema(Schema):
                 schema = field._jsonschema_type_mapping()
             elif field.__class__ in mapping:
                 pytype = mapping[field.__class__]
-                schema = self._from_python_type(field, pytype)
+                schema = self.__class__._from_python_type(field, pytype)
             elif isinstance(field, fields.Nested):
-                schema = self._from_nested_schema(field)
+                schema = self.__class__._from_nested_schema(field)
             else:
                 raise ValueError('unsupported field type %s' % field)
 
