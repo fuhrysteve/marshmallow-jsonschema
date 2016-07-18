@@ -8,7 +8,7 @@ def read(fname):
 try:
     import pypandoc
     long_description = pypandoc.convert('README.md', 'rst')
-except (IOError, ImportError):
+except (IOError, ImportError, OSError):
     long_description = read('README.md')
 
 setup(
