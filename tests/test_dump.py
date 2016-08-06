@@ -57,12 +57,29 @@ def test_nested_descriptions():
     assert nested_dmp['title'] == 'Title1'
 
 
+def test_nested_string_to_cls():
+    class TestSchema(Schema):
+        foo = fields.Integer(required=True)
+
+    class TestNestedSchema(Schema):
+        foo2 = fields.Integer(required=True)
+        nested = fields.Nested('TestSchema')
+    schema = TestNestedSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    nested_json = dumped['properties']['nested']
+    assert nested_json['properties']['foo']['format'] == 'integer'
+    assert nested_json['type'] == 'object'
+
+
 def test_one_of_validator():
     schema = UserSchema()
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
     assert dumped['properties']['sex']['enum'] == ['male', 'female']
+
 
 def test_range_validator():
     schema = Address()

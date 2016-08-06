@@ -10,6 +10,7 @@ check:
 coverage:
 	coverage erase
 	coverage run --source marshmallow_jsonschema -m py.test -v
+	coverage report -m
 
 pypitest:
 	python setup.py sdist upload -r pypitest

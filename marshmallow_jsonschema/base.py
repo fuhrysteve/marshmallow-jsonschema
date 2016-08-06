@@ -3,7 +3,8 @@ import uuid
 import decimal
 
 from marshmallow import fields, missing, Schema, validate
-from marshmallow.compat import text_type, binary_type
+from marshmallow.class_registry import get_class
+from marshmallow.compat import text_type, binary_type, basestring
 
 from .validation import handle_length, handle_one_of, handle_range
 
@@ -144,7 +145,11 @@ class JSONSchema(Schema):
 
     @classmethod
     def _from_nested_schema(cls, field):
-        schema = cls().dump(field.nested()).data
+        if isinstance(field.nested, basestring):
+            nested = get_class(field.nested)
+        else:
+            nested = field.nested
+        schema = cls().dump(nested()).data
 
         if field.metadata.get('metadata', {}).get('description'):
             schema['description'] = (
