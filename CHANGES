@@ -1,0 +1,5 @@
+0.3.0 (2016-06-12)
+    - add support for marshmallow validators (see #14)
+
+0.2.0 (2016-05-25)
+    - add support for titles & descriptions in metadata

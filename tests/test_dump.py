@@ -1,89 +1,214 @@
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, validate
 from marshmallow_jsonschema import JSONSchema
 from jsonschema import Draft4Validator
+import pytest
 
-from . import BaseTest, UserSchema
+from . import BaseTest, UserSchema, Address
 
 
-class TestDumpSchema(BaseTest):
+def _validate_schema(schema):
+    '''
+    raises jsonschema.exceptions.SchemaError
+    '''
+    Draft4Validator.check_schema(schema)
 
-    def _validate_schema(self, schema):
-        '''
-        raises jsonschema.exceptions.SchemaError
-        '''
-        Draft4Validator.check_schema(schema)
+def test_dump_schema():
+    schema = UserSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    assert len(schema.fields) > 1
+    for field_name, field in schema.fields.items():
+        assert field_name in dumped['properties']
 
-    def test_dump_schema(self):
-        schema = UserSchema()
-        json_schema = JSONSchema()
-        dumped = json_schema.dump(schema).data
-        self._validate_schema(dumped)
-        self.assertGreater(len(schema.fields), 1)
-        for field_name, field in schema.fields.items():
-            self.assertIn(field_name, dumped['properties'])
+def test_default():
+    schema = UserSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    assert dumped['properties']['id']['default'] == 'no-id'
 
-    def test_default(self):
-        schema = UserSchema()
-        json_schema = JSONSchema()
-        dumped = json_schema.dump(schema).data
-        self._validate_schema(dumped)
-        self.assertEqual(dumped['properties']['id']['default'], 'no-id')
+def test_descriptions():
+    class TestSchema(Schema):
+        myfield = fields.String(metadata={'description': 'Brown Cow'})
+        yourfield = fields.Integer(required=True)
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    assert dumped['properties']['myfield']['description'] == 'Brown Cow'
 
-    def test_unknown_typed_field_throws_valueerror(self):
+def test_nested_descriptions():
+    class TestSchema(Schema):
+        myfield = fields.String(metadata={'description': 'Brown Cow'})
+        yourfield = fields.Integer(required=True)
+    class TestNestedSchema(Schema):
+        nested = fields.Nested(
+            TestSchema, metadata={'description': 'Nested 1', 'title': 'Title1'})
+        yourfield_nested = fields.Integer(required=True)
 
-        class Invalid(fields.Field):
-            def _serialize(self, value, attr, obj):
-                return value
+    schema = TestNestedSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    nested_dmp = dumped['properties']['nested']
+    assert nested_dmp['properties']['myfield']['description'] == 'Brown Cow'
+    assert nested_dmp['description'] == 'Nested 1'
+    assert nested_dmp['title'] == 'Title1'
 
-        class UserSchema(Schema):
-            favourite_colour = Invalid()
 
-        schema = UserSchema()
-        json_schema = JSONSchema()
-        with self.assertRaises(ValueError):
-            dumped = json_schema.dump(schema).data
+def test_nested_string_to_cls():
+    class TestSchema(Schema):
+        foo = fields.Integer(required=True)
 
-    def test_unknown_typed_field(self):
+    class TestNestedSchema(Schema):
+        foo2 = fields.Integer(required=True)
+        nested = fields.Nested('TestSchema')
+    schema = TestNestedSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    nested_json = dumped['properties']['nested']
+    assert nested_json['properties']['foo']['format'] == 'integer'
+    assert nested_json['type'] == 'object'
 
-        class Colour(fields.Field):
 
-            def _jsonschema_type_mapping(self):
-                return {
-                    'type': 'string',
-                }
+def test_one_of_validator():
+    schema = UserSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    assert dumped['properties']['sex']['enum'] == ['male', 'female']
 
-            def _serialize(self, value, attr, obj):
-                r, g, b = value
-                r = hex(r)[2:]
-                g = hex(g)[2:]
-                b = hex(b)[2:]
-                return '#' + r + g + b
 
-        class UserSchema(Schema):
-            name = fields.String(required=True)
-            favourite_colour = Colour()
+def test_range_validator():
+    schema = Address()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    assert dumped['properties']['floor']['minimum'] == 1
+    assert dumped['properties']['floor']['maximum'] == 4
 
-        schema = UserSchema()
-        json_schema = JSONSchema()
-        dumped = json_schema.dump(schema).data
-        self.assertEqual(dumped['properties']['favourite_colour'],
-                         {'type': 'string'})
+def test_length_validator():
+    schema = UserSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    assert dumped['properties']['name']['minLength'] == 1
+    assert dumped['properties']['name']['maxLength'] == 255
+    assert dumped['properties']['addresses']['minItems'] == 1
+    assert dumped['properties']['addresses']['maxItems'] == 3
+    assert dumped['properties']['const']['minLength'] == 50
+    assert dumped['properties']['const']['maxLength'] == 50
 
-    def test_property_order(self):
+def test_length_validator_value_error():
+    class BadSchema(Schema):
+        bob = fields.Integer(validate=validate.Length(min=1, max=3))
+    schema = BadSchema(strict=True)
+    json_schema = JSONSchema()
+    with pytest.raises(ValueError):
+        json_schema.dump(schema)
 
-        class UserSchema(Schema):
-            first = fields.String()
-            second = fields.String()
-            third = fields.String()
-            fourth = fields.String()
 
-            class Meta:
-                ordered = True
+def test_handle_range_not_number_returns_same_instance():
+    class SchemaWithStringRange(Schema):
+        floor = fields.String(validate=validate.Range(min=1, max=4))
+    class SchemaWithNoRange(Schema):
+        floor = fields.String()
+    class SchemaWithIntRangeValidate(Schema):
+        floor = fields.Integer(validate=validate.Range(min=1, max=4))
+    class SchemaWithIntRangeNoValidate(Schema):
+        floor = fields.Integer()
+    schema1 = SchemaWithStringRange(strict=True)
+    schema2 = SchemaWithNoRange(strict=True)
+    schema3 = SchemaWithIntRangeValidate(strict=True)
+    schema4 = SchemaWithIntRangeNoValidate(strict=True)
+    json_schema = JSONSchema()
+    json_schema.dump(schema1) == json_schema.dump(schema2)
+    json_schema.dump(schema3) != json_schema.dump(schema4)
 
-        schema = UserSchema()
-        json_schema = JSONSchema()
-        dumped = json_schema.dump(schema).data
-        self.assertEqual(dumped['properties']['first']['propertyOrder'], 1)
-        self.assertEqual(dumped['properties']['second']['propertyOrder'], 2)
-        self.assertEqual(dumped['properties']['third']['propertyOrder'], 3)
-        self.assertEqual(dumped['properties']['fourth']['propertyOrder'], 4)
+
+def test_handle_range_no_minimum():
+    class SchemaMin(Schema):
+        floor = fields.Integer(validate=validate.Range(min=1, max=4))
+    class SchemaNoMin(Schema):
+        floor = fields.Integer(validate=validate.Range(max=4))
+    schema1 = SchemaMin(strict=True)
+    schema2 = SchemaNoMin(strict=True)
+    json_schema = JSONSchema()
+    dumped1 = json_schema.dump(schema1)
+    dumped2 = json_schema.dump(schema2)
+    dumped1.data['properties']['floor']['minimum'] == 1
+    dumped1.data['properties']['floor']['exclusiveMinimum'] is True
+    dumped2.data['properties']['floor']['minimum'] == 0
+    dumped2.data['properties']['floor']['exclusiveMinimum'] is False
+
+
+def test_title():
+    class TestSchema(Schema):
+        myfield = fields.String(metadata={'title': 'Brown Cowzz'})
+        yourfield = fields.Integer(required=True)
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    assert dumped['properties']['myfield']['title'] == 'Brown Cowzz'
+
+def test_unknown_typed_field_throws_valueerror():
+
+    class Invalid(fields.Field):
+        def _serialize(self, value, attr, obj):
+            return value
+
+    class UserSchema(Schema):
+        favourite_colour = Invalid()
+
+    schema = UserSchema()
+    json_schema = JSONSchema()
+    with pytest.raises(ValueError):
+        json_schema.dump(schema).data
+
+def test_unknown_typed_field():
+
+    class Colour(fields.Field):
+
+        def _jsonschema_type_mapping(self):
+            return {
+                'type': 'string',
+            }
+
+        def _serialize(self, value, attr, obj):
+            r, g, b = value
+            r = hex(r)[2:]
+            g = hex(g)[2:]
+            b = hex(b)[2:]
+            return '#' + r + g + b
+
+    class UserSchema(Schema):
+        name = fields.String(required=True)
+        favourite_colour = Colour()
+
+    schema = UserSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert dumped['properties']['favourite_colour'] == {'type': 'string'}
+
+
+def test_property_order():
+
+    class UserSchema(Schema):
+        first = fields.String()
+        second = fields.String()
+        third = fields.String()
+        fourth = fields.String()
+
+        class Meta:
+            ordered = True
+
+    schema = UserSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert dumped['properties']['first']['propertyOrder'] == 1
+    assert dumped['properties']['second']['propertyOrder'] == 2
+    assert dumped['properties']['third']['propertyOrder'] == 3
+    assert dumped['properties']['fourth']['propertyOrder'] == 4
