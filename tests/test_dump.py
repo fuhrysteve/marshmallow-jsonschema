@@ -186,9 +186,18 @@ def test_unknown_typed_field():
 
     class UserSchema(Schema):
         name = fields.String(required=True)
-        favourite_colour = Colour()
+        favourite_colour = Colour(default='#ffffff',
+                                  metadata=dict(
+                                    description="User's favorite colour",
+                                    title="Colour")
+                                  )
 
     schema = UserSchema()
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
-    assert dumped['properties']['favourite_colour'] == {'type': 'string'}
+    assert dumped['properties']['favourite_colour'] == {
+        'type': 'string',
+        'default': '#ffffff',
+        'description': "User's favorite colour",
+        'title': "Colour",
+    }
