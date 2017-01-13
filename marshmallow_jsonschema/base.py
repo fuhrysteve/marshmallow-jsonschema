@@ -90,6 +90,12 @@ class JSONSchema(Schema):
         self.nested = kwargs.pop('nested', False)
         super(JSONSchema, self).__init__(*args, **kwargs)
 
+    def get_custom_mappings(self):
+        """Return a dict of field class for keys, type for values for any
+        custom types.
+        """
+        return None
+
     def _get_default_mapping(self, obj):
         """Return default mapping if there are no special needs."""
         mapping = {v: k for k, v in obj.TYPE_MAPPING.items()}
@@ -101,11 +107,13 @@ class JSONSchema(Schema):
             fields.LocalDateTime: datetime.datetime,
             fields.Nested: '_from_nested_schema',
         })
+        custom_mappings = self.get_custom_mappings()
+        if custom_mappings:
+            mapping.update(self.get_custom_mappings())
         return mapping
 
     def get_properties(self, obj):
         """Fill out properties field."""
-        mapping = self._get_default_mapping(obj)
         properties = {}
 
         for field_name, field in sorted(obj.fields.items()):
