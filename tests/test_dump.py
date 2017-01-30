@@ -192,3 +192,10 @@ def test_unknown_typed_field():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     assert dumped['properties']['favourite_colour'] == {'type': 'string'}
+
+def test_regexp_validator():
+    schema = UserSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    assert dumped['properties']['hex_number']['pattern'] == '^[a-fA-F0-9]+$'

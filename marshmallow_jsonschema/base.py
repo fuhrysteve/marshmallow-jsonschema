@@ -6,7 +6,8 @@ from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.compat import text_type, binary_type, basestring
 
-from .validation import handle_length, handle_one_of, handle_range
+from .validation import (handle_length, handle_one_of, handle_range,
+                         handle_regexp)
 
 
 __all__ = ['JSONSchema']
@@ -73,6 +74,7 @@ FIELD_VALIDATORS = {
     validate.Length: handle_length,
     validate.OneOf: handle_one_of,
     validate.Range: handle_range,
+    validate.Regexp: handle_regexp
 }
 
 
