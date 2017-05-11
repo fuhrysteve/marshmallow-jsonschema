@@ -92,7 +92,7 @@ class JSONSchema(Schema):
 
         for field_name, field in sorted(obj.fields.items()):
             if hasattr(field, '_jsonschema_type_mapping'):
-                schema = field._jsonschema_type_mapping()
+                schema = self.__class__._from_custom_field_type(field)
             elif field.__class__ in mapping:
                 pytype = mapping[field.__class__]
                 schema = self.__class__._from_python_type(field, pytype)
@@ -166,3 +166,20 @@ class JSONSchema(Schema):
             }
 
         return schema
+
+    @classmethod
+    def _from_custom_field_type(cls, field):
+        json_schema = field._jsonschema_type_mapping()
+
+        if field.default is not missing:
+            json_schema['default'] = field.default
+
+        if field.metadata.get('metadata', {}).get('description'):
+            json_schema['description'] = (
+                field.metadata['metadata'].get('description')
+            )
+
+        if field.metadata.get('metadata', {}).get('title'):
+            json_schema['title'] = field.metadata['metadata'].get('title')
+
+        return json_schema
