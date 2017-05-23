@@ -130,6 +130,9 @@ class JSONSchema(Schema):
         for key, val in TYPE_MAP[pytype].items():
             json_schema[key] = val
 
+        if field.dump_only:
+            json_schema['readonly'] = True
+
         if field.default is not missing:
             json_schema['default'] = field.default
 

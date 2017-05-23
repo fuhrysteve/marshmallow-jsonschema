@@ -192,3 +192,18 @@ def test_unknown_typed_field():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     assert dumped['properties']['favourite_colour'] == {'type': 'string'}
+
+
+def test_readonly():
+    class TestSchema(Schema):
+        id = fields.Integer(required=True)
+        readonly_fld = fields.String(dump_only=True)
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert dumped['properties']['readonly_fld'] == {
+        'title': 'readonly_fld',
+        'type': 'string',
+        'readonly': True,
+    }
