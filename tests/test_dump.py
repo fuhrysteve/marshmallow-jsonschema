@@ -73,6 +73,21 @@ def test_nested_string_to_cls():
     assert nested_json['type'] == 'object'
 
 
+def test_list():
+    class ListSchema(Schema):
+        foo = fields.List(fields.String(min), required=True)
+
+    schema = ListSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    nested_json = dumped['properties']['foo']
+    assert nested_json['type'] == 'array'
+    assert 'items' in  nested_json
+    item_schema = nested_json['items']
+    assert item_schema['type'] == 'string'
+
+
 def test_one_of_validator():
     schema = UserSchema()
     json_schema = JSONSchema()
