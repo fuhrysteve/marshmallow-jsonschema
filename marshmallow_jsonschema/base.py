@@ -107,7 +107,9 @@ class JSONSchema(Schema):
                     schema = FIELD_VALIDATORS[validator.__class__](
                         schema, field, validator, obj
                     )
-
+            if field.allow_none:
+                schema['type'] = [schema['type'], 'null']
+                
             properties[field.name] = schema
 
         return properties
