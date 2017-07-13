@@ -1,3 +1,7 @@
+0.4.0 (2017-07-13)
+    - add support for fields.List (thanks @Bartvds and @sdayu
+      for tests & implementation)
+
 0.3.0 (2016-06-12)
     - add support for marshmallow validators (see #14)
 
