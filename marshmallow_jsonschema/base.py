@@ -145,15 +145,11 @@ class JSONSchema(Schema):
             json_schema['title'] = field.metadata['metadata'].get('title')
 
         if isinstance(field, fields.List):
-            container_pytype = None
-            container = field.container
-            for k, v in cls().TYPE_MAPPING.items():
-                if v == container.__class__:
-                    container_pytype = k
+            for ptyp, mtyp in cls.TYPE_MAPPING.items():
+                if isinstance(field.container, mtyp):
+                    json_schema['items'] = cls()._from_python_type(
+                        field.container, ptyp)
                     break
-            if container_pytype:
-                schema = cls()._from_python_type(container, container_pytype)
-                json_schema['items'] = schema
 
         return json_schema
 
