@@ -1,4 +1,4 @@
-
+SHELL := /bin/bash -euo pipefail
 
 installcheck:
 	pip install -U .[reco]
