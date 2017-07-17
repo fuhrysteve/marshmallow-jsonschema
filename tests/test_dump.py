@@ -108,6 +108,19 @@ def test_list_nested():
     assert 'foo' in item_schema['properties']
 
 
+def test_nested_recursive():
+    """A self-referential schema should not cause an infinite recurse."""
+
+    class RecursiveSchema(Schema):
+        foo = fields.Integer(required=True)
+        children = fields.Nested('RecursiveSchema', many=True)
+
+    schema = RecursiveSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+
+
 def test_one_of_validator():
     schema = UserSchema()
     json_schema = JSONSchema()
