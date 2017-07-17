@@ -155,8 +155,6 @@ class JSONSchema(Schema):
                 schema = cls._from_python_type(
                     obj, field, pytype
                 )
-        elif isinstance(field, fields.Nested):
-            schema = cls._from_nested_schema(field)
         else:
             raise ValueError('unsupported field type %s' % field)
 
