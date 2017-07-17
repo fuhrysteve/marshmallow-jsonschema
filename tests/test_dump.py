@@ -88,6 +88,26 @@ def test_list():
     assert item_schema['type'] == 'string'
 
 
+def test_list_nested():
+    """Test that a list field will work with an inner nested field."""
+
+    class InnerSchema(Schema):
+        foo = fields.Integer(required=True)
+
+    class ListSchema(Schema):
+        bar = fields.List(fields.Nested(InnerSchema), required=True)
+
+    schema = ListSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    nested_json = dumped['properties']['bar']
+    assert nested_json['type'] == 'array'
+    assert 'items' in  nested_json
+    item_schema = nested_json['items']
+    assert 'foo' in item_schema['properties']
+
+
 def test_one_of_validator():
     schema = UserSchema()
     json_schema = JSONSchema()

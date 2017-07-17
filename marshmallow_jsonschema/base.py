@@ -81,33 +81,26 @@ class JSONSchema(Schema):
     type = fields.Constant('object')
     required = fields.Method('get_required')
 
-    def get_properties(self, obj):
+    @classmethod
+    def _get_default_mapping(cls, obj):
+        """Return default mapping if there are no special needs."""
         mapping = {v: k for k, v in obj.TYPE_MAPPING.items()}
-        mapping[fields.Email] = text_type
-        mapping[fields.Dict] = dict
-        mapping[fields.List] = list
-        mapping[fields.Url] = text_type
-        mapping[fields.LocalDateTime] = datetime.datetime
+        mapping.update({
+            fields.Email: text_type,
+            fields.Dict: dict,
+            fields.Url: text_type,
+            fields.List: list,
+            fields.LocalDateTime: datetime.datetime,
+            fields.Nested: '_from_nested_schema',
+        })
+        return mapping
+
+    def get_properties(self, obj):
+        mapping = self.__class__._get_default_mapping(obj)
         properties = {}
 
         for field_name, field in sorted(obj.fields.items()):
-            if hasattr(field, '_jsonschema_type_mapping'):
-                schema = field._jsonschema_type_mapping()
-            elif field.__class__ in mapping:
-                pytype = mapping[field.__class__]
-                schema = self.__class__._from_python_type(field, pytype)
-            elif isinstance(field, fields.Nested):
-                schema = self.__class__._from_nested_schema(field)
-            else:
-                raise ValueError('unsupported field type %s' % field)
-
-            # Apply any and all validators that field may have
-            for validator in field.validators:
-                if validator.__class__ in FIELD_VALIDATORS:
-                    schema = FIELD_VALIDATORS[validator.__class__](
-                        schema, field, validator, obj
-                    )
-
+            schema = self.__class__._get_schema(obj, field)
             properties[field.name] = schema
 
         return properties
@@ -122,7 +115,7 @@ class JSONSchema(Schema):
         return required
 
     @classmethod
-    def _from_python_type(cls, field, pytype):
+    def _from_python_type(cls, obj, field, pytype):
         json_schema = {
             'title': field.attribute or field.name,
         }
@@ -145,16 +138,39 @@ class JSONSchema(Schema):
             json_schema['title'] = field.metadata['metadata'].get('title')
 
         if isinstance(field, fields.List):
-            for ptyp, mtyp in cls.TYPE_MAPPING.items():
-                if isinstance(field.container, mtyp):
-                    json_schema['items'] = cls()._from_python_type(
-                        field.container, ptyp)
-                    break
-
+            json_schema['items'] = cls._get_schema(obj, field.container)
         return json_schema
 
     @classmethod
-    def _from_nested_schema(cls, field):
+    def _get_schema(cls, obj, field):
+        """Get schema and validators for field."""
+        mapping = cls._get_default_mapping(obj)
+        if hasattr(field, '_jsonschema_type_mapping'):
+            schema = field._jsonschema_type_mapping()
+        elif field.__class__ in mapping:
+            pytype = mapping[field.__class__]
+            if isinstance(pytype, basestring):
+                schema = getattr(cls, pytype)(obj, field)
+            else:
+                schema = cls._from_python_type(
+                    obj, field, pytype
+                )
+        elif isinstance(field, fields.Nested):
+            schema = cls._from_nested_schema(field)
+        else:
+            raise ValueError('unsupported field type %s' % field)
+
+        # Apply any and all validators that field may have
+        for validator in field.validators:
+            if validator.__class__ in FIELD_VALIDATORS:
+                schema = FIELD_VALIDATORS[validator.__class__](
+                    schema, field, validator, obj
+                )
+        return schema
+
+
+    @classmethod
+    def _from_nested_schema(cls, obj, field):
         if isinstance(field.nested, basestring):
             nested = get_class(field.nested)
         else:
