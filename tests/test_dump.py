@@ -141,6 +141,27 @@ def test_deep_nested():
     assert 'InnerSchema' in defs
 
 
+def test_function():
+    """Function fields can be serialised if type is given."""
+
+    class FnSchema(Schema):
+        fn_str = fields.Function(
+            lambda: "string", required=True,
+            _jsonschema_type_mapping={'type': 'string'}
+        )
+        fn_int = fields.Function(
+            lambda: 123, required=True,
+            _jsonschema_type_mapping={'type': 'number'}
+        )
+
+    schema = FnSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    props = dumped['definitions']['FnSchema']['properties']
+    assert props['fn_int']['type'] == 'number'
+    assert props['fn_str']['type'] == 'string'
+
+
 def test_nested_recursive():
     """A self-referential schema should not cause an infinite recurse."""
 

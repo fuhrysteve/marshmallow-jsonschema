@@ -158,6 +158,8 @@ class JSONSchema(Schema):
         mapping = self._get_default_mapping(obj)
         if hasattr(field, '_jsonschema_type_mapping'):
             schema = field._jsonschema_type_mapping()
+        elif '_jsonschema_type_mapping' in field.metadata:
+            schema = field.metadata['_jsonschema_type_mapping']
         elif field.__class__ in mapping:
             pytype = mapping[field.__class__]
             if isinstance(pytype, basestring):
