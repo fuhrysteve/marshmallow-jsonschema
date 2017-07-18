@@ -104,6 +104,7 @@ class JSONSchema(Schema):
         return mapping
 
     def get_properties(self, obj):
+        """Fill out properties field."""
         mapping = self._get_default_mapping(obj)
         properties = {}
 
@@ -114,6 +115,7 @@ class JSONSchema(Schema):
         return properties
 
     def get_required(self, obj):
+        """Fill out required field."""
         required = []
 
         for field_name, field in sorted(obj.fields.items()):
@@ -176,6 +178,7 @@ class JSONSchema(Schema):
         return schema
 
     def _from_nested_schema(self, obj, field):
+        """Support nested field."""
         if isinstance(field.nested, basestring):
             nested = get_class(field.nested)
         else:
@@ -183,11 +186,15 @@ class JSONSchema(Schema):
 
         name = nested.__name__
         outer_name = obj.__class__.__name__
+
+        # If this is not a schema we've seen, and it's not this schema,
+        # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
             self._nested_schema_classes[name] = JSONSchema(nested=True).dump(
                 nested()
             ).data
 
+        # and the schema is just a reference to the def
         schema = {
             'type': 'object',
             '$ref': '#/definitions/{}'.format(name)
@@ -210,7 +217,7 @@ class JSONSchema(Schema):
         return schema
 
     def dump(self, obj, **kwargs):
-        """Take obj for class name."""
+        """Take obj for later use: using class name to namespace definition."""
         self.obj = obj
         return super(JSONSchema, self).dump(obj, **kwargs)
 
