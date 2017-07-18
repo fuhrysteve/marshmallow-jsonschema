@@ -190,9 +190,14 @@ class JSONSchema(Schema):
         # If this is not a schema we've seen, and it's not this schema,
         # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
-            self._nested_schema_classes[name] = JSONSchema(nested=True).dump(
+            wrapped_nested = JSONSchema(nested=True)
+            wrapped_dumped = wrapped_nested.dump(
                 nested()
-            ).data
+            )
+            self._nested_schema_classes[name] = wrapped_dumped.data
+            self._nested_schema_classes.update(
+                wrapped_nested._nested_schema_classes
+            )
 
         # and the schema is just a reference to the def
         schema = {

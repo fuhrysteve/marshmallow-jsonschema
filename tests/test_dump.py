@@ -115,6 +115,32 @@ def test_list_nested():
     assert 'InnerSchema' in item_schema['$ref']
 
 
+def test_deep_nested():
+    """Test that deep nested schemas are in definitions."""
+
+    class InnerSchema(Schema):
+        boz = fields.Integer(required=True)
+
+    class InnerMiddleSchema(Schema):
+        baz = fields.Nested(InnerSchema, required=True)
+
+    class OuterMiddleSchema(Schema):
+        bar = fields.Nested(InnerMiddleSchema, required=True)
+
+    class OuterSchema(Schema):
+        foo = fields.Nested(OuterMiddleSchema, required=True)
+
+    schema = OuterSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    defs = dumped['definitions']
+    assert 'OuterSchema' in defs
+    assert 'OuterMiddleSchema' in defs
+    assert 'InnerMiddleSchema' in defs
+    assert 'InnerSchema' in defs
+
+
 def test_nested_recursive():
     """A self-referential schema should not cause an infinite recurse."""
 
