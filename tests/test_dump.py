@@ -18,15 +18,17 @@ def test_dump_schema():
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
     assert len(schema.fields) > 1
+    props = dumped['definitions']['UserSchema']['properties']
     for field_name, field in schema.fields.items():
-        assert field_name in dumped['properties']
+        assert field_name in props
 
 def test_default():
     schema = UserSchema()
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
-    assert dumped['properties']['id']['default'] == 'no-id'
+    props = dumped['definitions']['UserSchema']['properties']
+    assert props['id']['default'] == 'no-id'
 
 def test_descriptions():
     class TestSchema(Schema):
@@ -36,7 +38,8 @@ def test_descriptions():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
-    assert dumped['properties']['myfield']['description'] == 'Brown Cow'
+    props = dumped['definitions']['TestSchema']['properties']
+    assert props['myfield']['description'] == 'Brown Cow'
 
 def test_nested_descriptions():
     class TestSchema(Schema):
@@ -51,8 +54,11 @@ def test_nested_descriptions():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
-    nested_dmp = dumped['properties']['nested']
-    assert nested_dmp['properties']['myfield']['description'] == 'Brown Cow'
+    nested_def = dumped['definitions']['TestSchema']
+    nested_dmp = dumped['definitions']['TestNestedSchema']['properties']['nested']
+    assert nested_def['properties']['myfield']['description'] == 'Brown Cow'
+
+    assert nested_dmp['$ref'] == '#/definitions/TestSchema'
     assert nested_dmp['description'] == 'Nested 1'
     assert nested_dmp['title'] == 'Title1'
 
@@ -68,9 +74,10 @@ def test_nested_string_to_cls():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
-    nested_json = dumped['properties']['nested']
-    assert nested_json['properties']['foo']['format'] == 'integer'
-    assert nested_json['type'] == 'object'
+    nested_def = dumped['definitions']['TestSchema']
+    nested_dmp = dumped['definitions']['TestNestedSchema']['properties']['nested']
+    assert nested_dmp['type'] == 'object'
+    assert nested_def['properties']['foo']['format'] == 'integer'
 
 
 def test_list():
@@ -81,11 +88,93 @@ def test_list():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
-    nested_json = dumped['properties']['foo']
+    nested_json = dumped['definitions']['ListSchema']['properties']['foo']
     assert nested_json['type'] == 'array'
     assert 'items' in  nested_json
     item_schema = nested_json['items']
     assert item_schema['type'] == 'string'
+
+
+def test_list_nested():
+    """Test that a list field will work with an inner nested field."""
+
+    class InnerSchema(Schema):
+        foo = fields.Integer(required=True)
+
+    class ListSchema(Schema):
+        bar = fields.List(fields.Nested(InnerSchema), required=True)
+
+    schema = ListSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    nested_json = dumped['definitions']['ListSchema']['properties']['bar']
+    assert nested_json['type'] == 'array'
+    assert 'items' in  nested_json
+    item_schema = nested_json['items']
+    assert 'InnerSchema' in item_schema['$ref']
+
+
+def test_deep_nested():
+    """Test that deep nested schemas are in definitions."""
+
+    class InnerSchema(Schema):
+        boz = fields.Integer(required=True)
+
+    class InnerMiddleSchema(Schema):
+        baz = fields.Nested(InnerSchema, required=True)
+
+    class OuterMiddleSchema(Schema):
+        bar = fields.Nested(InnerMiddleSchema, required=True)
+
+    class OuterSchema(Schema):
+        foo = fields.Nested(OuterMiddleSchema, required=True)
+
+    schema = OuterSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    defs = dumped['definitions']
+    assert 'OuterSchema' in defs
+    assert 'OuterMiddleSchema' in defs
+    assert 'InnerMiddleSchema' in defs
+    assert 'InnerSchema' in defs
+
+
+def test_function():
+    """Function fields can be serialised if type is given."""
+
+    class FnSchema(Schema):
+        fn_str = fields.Function(
+            lambda: "string", required=True,
+            _jsonschema_type_mapping={'type': 'string'}
+        )
+        fn_int = fields.Function(
+            lambda: 123, required=True,
+            _jsonschema_type_mapping={'type': 'number'}
+        )
+
+    schema = FnSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    props = dumped['definitions']['FnSchema']['properties']
+    assert props['fn_int']['type'] == 'number'
+    assert props['fn_str']['type'] == 'string'
+
+
+def test_nested_recursive():
+    """A self-referential schema should not cause an infinite recurse."""
+
+    class RecursiveSchema(Schema):
+        foo = fields.Integer(required=True)
+        children = fields.Nested('RecursiveSchema', many=True)
+
+    schema = RecursiveSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    props = dumped['definitions']['RecursiveSchema']['properties']
+    assert 'RecursiveSchema' in props['children']['items']['$ref']
 
 
 def test_one_of_validator():
@@ -93,7 +182,11 @@ def test_one_of_validator():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
-    assert dumped['properties']['sex']['enum'] == ['male', 'female']
+    assert (
+        dumped['definitions']['UserSchema']['properties']['sex']['enum'] == [
+            'male', 'female'
+        ]
+    )
 
 
 def test_range_validator():
@@ -101,20 +194,22 @@ def test_range_validator():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
-    assert dumped['properties']['floor']['minimum'] == 1
-    assert dumped['properties']['floor']['maximum'] == 4
+    props = dumped['definitions']['Address']['properties']
+    assert props['floor']['minimum'] == 1
+    assert props['floor']['maximum'] == 4
 
 def test_length_validator():
     schema = UserSchema()
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
-    assert dumped['properties']['name']['minLength'] == 1
-    assert dumped['properties']['name']['maxLength'] == 255
-    assert dumped['properties']['addresses']['minItems'] == 1
-    assert dumped['properties']['addresses']['maxItems'] == 3
-    assert dumped['properties']['const']['minLength'] == 50
-    assert dumped['properties']['const']['maxLength'] == 50
+    props = dumped['definitions']['UserSchema']['properties']
+    assert props['name']['minLength'] == 1
+    assert props['name']['maxLength'] == 255
+    assert props['addresses']['minItems'] == 1
+    assert props['addresses']['maxItems'] == 3
+    assert props['const']['minLength'] == 50
+    assert props['const']['maxLength'] == 50
 
 def test_length_validator_value_error():
     class BadSchema(Schema):
@@ -151,12 +246,12 @@ def test_handle_range_no_minimum():
     schema1 = SchemaMin(strict=True)
     schema2 = SchemaNoMin(strict=True)
     json_schema = JSONSchema()
-    dumped1 = json_schema.dump(schema1)
-    dumped2 = json_schema.dump(schema2)
-    dumped1.data['properties']['floor']['minimum'] == 1
-    dumped1.data['properties']['floor']['exclusiveMinimum'] is True
-    dumped2.data['properties']['floor']['minimum'] == 0
-    dumped2.data['properties']['floor']['exclusiveMinimum'] is False
+    dumped1 = json_schema.dump(schema1).data['definitions']['SchemaMin']
+    dumped2 = json_schema.dump(schema2).data['definitions']['SchemaNoMin']
+    dumped1['properties']['floor']['minimum'] == 1
+    dumped1['properties']['floor']['exclusiveMinimum'] is True
+    dumped2['properties']['floor']['minimum'] == 0
+    dumped2['properties']['floor']['exclusiveMinimum'] is False
 
 
 def test_title():
@@ -167,7 +262,9 @@ def test_title():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
-    assert dumped['properties']['myfield']['title'] == 'Brown Cowzz'
+    assert dumped['definitions']['TestSchema']['properties']['myfield'][
+        'title'
+    ] == 'Brown Cowzz'
 
 def test_unknown_typed_field_throws_valueerror():
 
@@ -206,7 +303,9 @@ def test_unknown_typed_field():
     schema = UserSchema()
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
-    assert dumped['properties']['favourite_colour'] == {'type': 'string'}
+    assert dumped['definitions']['UserSchema']['properties'][
+        'favourite_colour'
+    ] == {'type': 'string'}
 
 
 def test_readonly():
@@ -217,7 +316,9 @@ def test_readonly():
     schema = TestSchema()
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
-    assert dumped['properties']['readonly_fld'] == {
+    assert dumped['definitions']['TestSchema']['properties'][
+        'readonly_fld'
+    ] == {
         'title': 'readonly_fld',
         'type': 'string',
         'readonly': True,
