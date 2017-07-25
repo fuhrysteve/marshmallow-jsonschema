@@ -323,3 +323,20 @@ def test_readonly():
         'type': 'string',
         'readonly': True,
     }
+
+def test_metadata_direct_from_field():
+    """Should be able to get metadata without accessing metadata kwarg."""
+    class TestSchema(Schema):
+        id = fields.Integer(required=True)
+        metadata_field = fields.String(description='Directly on the field')
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert dumped['definitions']['TestSchema']['properties'][
+        'metadata_field'
+    ] == {
+        'title': 'metadata_field',
+        'type': 'string',
+        'description': 'Directly on the field',
+    }
