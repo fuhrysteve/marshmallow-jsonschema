@@ -35,7 +35,7 @@ def test_dump_ordered():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     assert (
-        dumped['definitions']['AddressOrdered']['properties'].keys() ==
+        list(dumped['definitions']['AddressOrdered']['properties'].keys()) ==
         ['id', 'street', 'number', 'city', 'floor']
     )
 
