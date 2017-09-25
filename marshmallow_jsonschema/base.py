@@ -2,6 +2,8 @@ import datetime
 import uuid
 import decimal
 
+from collections import OrderedDict
+
 from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.compat import text_type, binary_type, basestring
@@ -106,9 +108,9 @@ class JSONSchema(Schema):
     def get_properties(self, obj):
         """Fill out properties field."""
         mapping = self._get_default_mapping(obj)
-        properties = {}
+        properties = OrderedDict()
 
-        for field_name, field in sorted(obj.fields.items()):
+        for field_name, field in obj.fields.items():
             schema = self._get_schema_for_field(obj, field)
             properties[field.name] = schema
 
