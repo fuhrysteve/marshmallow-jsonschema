@@ -328,7 +328,7 @@ def test_metadata_direct_from_field():
     """Should be able to get metadata without accessing metadata kwarg."""
     class TestSchema(Schema):
         id = fields.Integer(required=True)
-        metadata_field = fields.String(description='Directly on the field')
+        metadata_field = fields.String(description='Directly on the field!')
 
     schema = TestSchema()
     json_schema = JSONSchema()
@@ -338,5 +338,5 @@ def test_metadata_direct_from_field():
     ] == {
         'title': 'metadata_field',
         'type': 'string',
-        'description': 'Directly on the field',
+        'description': 'Directly on the field!',
     }
