@@ -139,13 +139,17 @@ class JSONSchema(Schema):
         if field.default is not missing:
             json_schema['default'] = field.default
 
-        if field.metadata.get('metadata', {}).get('description'):
+        # NOTE: doubled up to maintain backwards compatibility
+        metadata = field.metadata.get('metadata', {})
+        metadata.update(field.metadata)
+
+        if metadata.get('description'):
             json_schema['description'] = (
-                field.metadata['metadata'].get('description')
+                metadata.get('description')
             )
 
-        if field.metadata.get('metadata', {}).get('title'):
-            json_schema['title'] = field.metadata['metadata'].get('title')
+        if metadata.get('title'):
+            json_schema['title'] = metadata.get('title')
 
         if isinstance(field, fields.List):
             json_schema['items'] = self._get_schema_for_field(
@@ -207,13 +211,17 @@ class JSONSchema(Schema):
             '$ref': '#/definitions/{}'.format(name)
         }
 
-        if field.metadata.get('metadata', {}).get('description'):
+        # NOTE: doubled up to maintain backwards compatibility
+        metadata = field.metadata.get('metadata', {})
+        metadata.update(field.metadata)
+
+        if metadata.get('description'):
             schema['description'] = (
-                field.metadata['metadata'].get('description')
+                metadata.get('description')
             )
 
-        if field.metadata.get('metadata', {}).get('title'):
-            schema['title'] = field.metadata['metadata'].get('title')
+        if metadata.get('title'):
+            schema['title'] = metadata.get('title')
 
         if field.many:
             schema = {
