@@ -374,3 +374,37 @@ def test_custom_field_by_subclassing():
         'default': 'red',
         'title': 'favourite_colour',
         'type': 'string'}
+
+
+def test_nested_custom_field_by_subclassing():
+
+    class Colour(fields.String):
+        def __init__(self, default='red', **kwargs):
+            super(Colour, self).__init__(default=default, **kwargs)
+
+    class ColoursSchema(Schema):
+        favourite_colour = Colour()
+
+    class UserSchema(Schema):
+        name = fields.String(required=True)
+        colours = fields.Nested(ColoursSchema)
+
+    schema = UserSchema()
+    json_schema = JSONSchema()
+
+    with pytest.raises(ValueError):
+        # The custom Color field is not registered
+        dumped = json_schema.dump(schema)
+
+    # Provide the custom field to the default mappings
+    class CustomJSONSchema(JSONSchema):
+        def get_custom_mappings(self):
+            return {Colour:  text_type}
+
+    # Register the field
+    json_schema = CustomJSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert dumped['definitions']['ColoursSchema']['properties']['favourite_colour'] == {
+        'default': 'red',
+        'title': 'favourite_colour',
+        'type': 'string'}
