@@ -340,3 +340,23 @@ def test_metadata_direct_from_field():
         'type': 'string',
         'description': 'Directly on the field!',
     }
+
+
+def test_metadata_format():
+    """Should be able to get metadata without accessing metadata kwarg."""
+    class UserSchema(Schema):
+        id = fields.Integer(required=True)
+        password = fields.String(
+            metadata={
+                'format': 'secret'
+            }
+        )
+
+    schema = UserSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert dumped['definitions']['UserSchema']['properties']['password'] == {
+        'title': 'password',
+        'type': 'string',
+        'format': 'secret'
+    }

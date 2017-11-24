@@ -151,6 +151,9 @@ class JSONSchema(Schema):
         if metadata.get('title'):
             json_schema['title'] = metadata.get('title')
 
+        if metadata.get('format'):
+            json_schema['format'] = metadata.get('format')
+
         if isinstance(field, fields.List):
             json_schema['items'] = self._get_schema_for_field(
                 obj, field.container
