@@ -35,13 +35,14 @@ def test_metadata():
     """Metadata should be available in the field definition."""
     class TestSchema(Schema):
         myfield = fields.String(metadata={'foo': 'Bar'})
-        yourfield = fields.Integer(required=True)
+        yourfield = fields.Integer(required=True, baz="waz")
     schema = TestSchema()
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
     props = dumped['definitions']['TestSchema']['properties']
     assert props['myfield']['foo'] == 'Bar'
+    assert props['yourfield']['baz'] == 'waz'
 
 
 def test_descriptions():
