@@ -30,6 +30,20 @@ def test_default():
     props = dumped['definitions']['UserSchema']['properties']
     assert props['id']['default'] == 'no-id'
 
+
+def test_metadata():
+    """Metadata should be available in the field definition."""
+    class TestSchema(Schema):
+        myfield = fields.String(metadata={'foo': 'Bar'})
+        yourfield = fields.Integer(required=True)
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    props = dumped['definitions']['TestSchema']['properties']
+    assert props['myfield']['foo'] == 'Bar'
+
+
 def test_descriptions():
     class TestSchema(Schema):
         myfield = fields.String(metadata={'description': 'Brown Cow'})
