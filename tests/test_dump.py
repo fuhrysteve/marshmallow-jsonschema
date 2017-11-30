@@ -141,6 +141,75 @@ def test_deep_nested():
     assert 'InnerSchema' in defs
 
 
+def test_respect_only_for_nested_schema():
+    """Should ignore fields not in 'only' metadata for nested schemas."""
+    class InnerRecursiveSchema(Schema):
+        id = fields.Integer(required=True)
+        baz = fields.String()
+        recursive = fields.Nested('InnerRecursiveSchema')
+
+    class MiddleSchema(Schema):
+        id = fields.Integer(required=True)
+        bar = fields.String()
+        inner = fields.Nested('InnerRecursiveSchema', only=('id', 'baz'))
+
+    class OuterSchema(Schema):
+        foo2 = fields.Integer(required=True)
+        nested = fields.Nested('MiddleSchema')
+
+    schema = OuterSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
+    assert 'recursive' not in inner_props
+
+
+def test_respect_exclude_for_nested_schema():
+    """Should ignore fields in 'exclude' metadata for nested schemas."""
+    class InnerRecursiveSchema(Schema):
+        id = fields.Integer(required=True)
+        baz = fields.String()
+        recursive = fields.Nested('InnerRecursiveSchema')
+
+    class MiddleSchema(Schema):
+        id = fields.Integer(required=True)
+        bar = fields.String()
+        inner = fields.Nested('InnerRecursiveSchema', exclude=('recursive',))
+
+    class OuterSchema(Schema):
+        foo2 = fields.Integer(required=True)
+        nested = fields.Nested('MiddleSchema')
+
+    schema = OuterSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
+    assert 'recursive' not in inner_props
+
+
+def test_respect_dotted_exclude_for_nested_schema():
+    """Should ignore dotted fields in 'exclude' metadata for nested schemas."""
+    class InnerRecursiveSchema(Schema):
+        id = fields.Integer(required=True)
+        baz = fields.String()
+        recursive = fields.Nested('InnerRecursiveSchema')
+
+    class MiddleSchema(Schema):
+        id = fields.Integer(required=True)
+        bar = fields.String()
+        inner = fields.Nested('InnerRecursiveSchema')
+
+    class OuterSchema(Schema):
+        foo2 = fields.Integer(required=True)
+        nested = fields.Nested('MiddleSchema', exclude=('inner.recursive',))
+
+    schema = OuterSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
+    assert 'recursive' not in inner_props
+
+
 def test_function():
     """Function fields can be serialised if type is given."""
 

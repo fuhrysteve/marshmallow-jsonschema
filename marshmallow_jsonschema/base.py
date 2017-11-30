@@ -192,13 +192,15 @@ class JSONSchema(Schema):
 
         name = nested.__name__
         outer_name = obj.__class__.__name__
+        only = field.only
+        exclude = field.exclude
 
         # If this is not a schema we've seen, and it's not this schema,
         # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
             wrapped_nested = JSONSchema(nested=True)
             wrapped_dumped = wrapped_nested.dump(
-                nested()
+                nested(only=only, exclude=exclude)
             )
             self._nested_schema_classes[name] = wrapped_dumped.data
             self._nested_schema_classes.update(
