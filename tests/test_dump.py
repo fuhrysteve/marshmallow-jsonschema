@@ -43,7 +43,16 @@ def test_metadata():
     props = dumped['definitions']['TestSchema']['properties']
     assert props['myfield']['foo'] == 'Bar'
     assert props['yourfield']['baz'] == 'waz'
+    assert 'metadata' not in props['myfield']
+    assert 'metadata' not in props['yourfield']
 
+    # repeat process to assure idempotency
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    props = dumped['definitions']['TestSchema']['properties']
+    assert props['myfield']['foo'] == 'Bar'
+    assert props['yourfield']['baz'] == 'waz'
 
 def test_descriptions():
     class TestSchema(Schema):
