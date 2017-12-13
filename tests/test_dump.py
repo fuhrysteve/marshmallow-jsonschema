@@ -1,4 +1,5 @@
 from marshmallow import Schema, fields, validate
+from marshmallow.compat import text_type
 from marshmallow_jsonschema import JSONSchema
 from jsonschema import Draft4Validator
 import pytest
@@ -366,6 +367,7 @@ def test_title():
         'title'
     ] == 'Brown Cowzz'
 
+
 def test_unknown_typed_field_throws_valueerror():
 
     class Invalid(fields.Field):
@@ -379,6 +381,7 @@ def test_unknown_typed_field_throws_valueerror():
     json_schema = JSONSchema()
     with pytest.raises(ValueError):
         json_schema.dump(schema).data
+
 
 def test_unknown_typed_field():
 
@@ -440,3 +443,68 @@ def test_metadata_direct_from_field():
         'type': 'string',
         'description': 'Directly on the field!',
     }
+
+
+def test_custom_field_by_subclassing():
+
+    class Colour(fields.String):
+        def __init__(self, default='red', **kwargs):
+            super(Colour, self).__init__(default=default, **kwargs)
+
+    class UserSchema(Schema):
+        name = fields.String(required=True)
+        favourite_colour = Colour()
+
+    schema = UserSchema()
+    json_schema = JSONSchema()
+
+    with pytest.raises(ValueError):
+        # The custom Color field is not registered
+        dumped = json_schema.dump(schema)
+
+    # Provide the custom field to the default mappings
+    class CustomJSONSchema(JSONSchema):
+        def get_custom_mappings(self):
+            return {Colour:  text_type}
+
+    # Register the field
+    json_schema = CustomJSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert dumped['definitions']['UserSchema']['properties']['favourite_colour'] == {
+        'default': 'red',
+        'title': 'favourite_colour',
+        'type': 'string'}
+
+
+def test_nested_custom_field_by_subclassing():
+
+    class Colour(fields.String):
+        def __init__(self, default='red', **kwargs):
+            super(Colour, self).__init__(default=default, **kwargs)
+
+    class ColoursSchema(Schema):
+        favourite_colour = Colour()
+
+    class UserSchema(Schema):
+        name = fields.String(required=True)
+        colours = fields.Nested(ColoursSchema)
+
+    schema = UserSchema()
+    json_schema = JSONSchema()
+
+    with pytest.raises(ValueError):
+        # The custom Color field is not registered
+        dumped = json_schema.dump(schema)
+
+    # Provide the custom field to the default mappings
+    class CustomJSONSchema(JSONSchema):
+        def get_custom_mappings(self):
+            return {Colour:  text_type}
+
+    # Register the field
+    json_schema = CustomJSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert dumped['definitions']['ColoursSchema']['properties']['favourite_colour'] == {
+        'default': 'red',
+        'title': 'favourite_colour',
+        'type': 'string'}
