@@ -67,6 +67,7 @@ def handle_one_of(schema, field, validator, parent_schema):
     """
     if validator.choices:
         schema['enum'] = validator.choices
+        schema['enumNames'] = validator.labels
 
     return schema
 

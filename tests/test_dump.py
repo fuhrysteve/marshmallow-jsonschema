@@ -184,7 +184,14 @@ def test_one_of_validator():
     _validate_schema(dumped)
     assert (
         dumped['definitions']['UserSchema']['properties']['sex']['enum'] == [
-            'male', 'female'
+            'male', 'female', 'non_binary', 'other'
+        ]
+    )
+    assert (
+        dumped['definitions']['UserSchema']['properties']['sex'][
+            'enumNames'
+        ] == [
+            'Male', 'Female', 'Non-binary/fluid', 'Other'
         ]
     )
 
