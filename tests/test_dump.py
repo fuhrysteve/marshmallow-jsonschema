@@ -453,8 +453,8 @@ def test_dumps_iterable_enums():
     dumped = json_schema.dump(schema).data
 
     assert dumped['definitions']['TestSchema']['properties']['foo'] == {
-        'enum': [0, 1, 2],
-        'enumNames': ['a', 'b', 'c'],
+        'enum': [v for v in mapping.values()],
+        'enumNames': [k for k in mapping.keys()],
         'format': 'integer',
         'title': 'foo',
         'type': 'number'
