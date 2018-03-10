@@ -440,3 +440,22 @@ def test_metadata_direct_from_field():
         'type': 'string',
         'description': 'Directly on the field!',
     }
+
+def test_dumps_iterable_enums():
+    mapping = {'a': 0, 'b': 1, 'c': 2}
+
+    class TestSchema(Schema):
+        foo = fields.Integer(validate=validate.OneOf(
+            mapping.values(), labels=mapping.keys()))
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+
+    assert dumped['definitions']['TestSchema']['properties']['foo'] == {
+        'enum': [0, 1, 2],
+        'enumNames': ['a', 'b', 'c'],
+        'format': 'integer',
+        'title': 'foo',
+        'type': 'number'
+    }
