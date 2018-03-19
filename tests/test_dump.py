@@ -270,6 +270,27 @@ def test_nested_recursive():
     assert 'RecursiveSchema' in props['children']['items']['$ref']
 
 
+def test_nested_recursive_non_self():
+    """A nested schema with a loop back to itself (but not self)."""
+
+    class Schema1(Schema):
+        foo = fields.Integer(required=True)
+        children = fields.Nested('Schema2', many=True)
+
+    class Schema2(Schema):
+        foo = fields.Integer(required=True)
+        children = fields.Nested('Schema1', many=True)
+
+    schema = Schema1()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    props = dumped['definitions']['Schema1']['properties']
+    assert 'Schema2' in props['children']['items']['$ref']
+    props = dumped['definitions']['Schema2']['properties']
+    assert 'Schema1' in props['children']['items']['$ref']
+
+
 def test_one_of_validator():
     schema = UserSchema()
     json_schema = JSONSchema()

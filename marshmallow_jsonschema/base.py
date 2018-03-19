@@ -86,7 +86,7 @@ class JSONSchema(Schema):
 
     def __init__(self, *args, **kwargs):
         """Setup internal cache of nested fields, to prevent recursion."""
-        self._nested_schema_classes = {}
+        self._nested_schema_classes = kwargs.pop('_nested_schema_classes', {})
         self.nested = kwargs.pop('nested', False)
         super(JSONSchema, self).__init__(*args, **kwargs)
 
@@ -188,21 +188,19 @@ class JSONSchema(Schema):
             nested = field.nested
 
         name = nested.__name__
-        outer_name = obj.__class__.__name__
         only = field.only
         exclude = field.exclude
 
         # If this is not a schema we've seen, and it's not this schema,
         # put it in our list of schema defs
-        if name not in self._nested_schema_classes and name != outer_name:
-            wrapped_nested = JSONSchema(nested=True)
+        if name not in self._nested_schema_classes:
+            # add it to _nested_schema_classes immideately, to stop infinite recursion
+            self._nested_schema_classes[name] = {}
+            wrapped_nested = JSONSchema(nested=True, _nested_schema_classes=self._nested_schema_classes)
             wrapped_dumped = wrapped_nested.dump(
                 nested(only=only, exclude=exclude)
             )
             self._nested_schema_classes[name] = wrapped_dumped.data
-            self._nested_schema_classes.update(
-                wrapped_nested._nested_schema_classes
-            )
 
         # and the schema is just a reference to the def
         schema = {
