@@ -1,10 +1,11 @@
 import datetime
-import uuid
 import decimal
+import uuid
 
-from marshmallow import fields, missing, Schema, validate
+from marshmallow import Schema, fields, missing, validate
+from marshmallow.base import SchemaABC
 from marshmallow.class_registry import get_class
-from marshmallow.compat import text_type, binary_type, basestring
+from marshmallow.compat import basestring, binary_type, text_type
 from marshmallow.decorators import post_dump
 
 from .validation import handle_length, handle_one_of, handle_range
@@ -182,8 +183,12 @@ class JSONSchema(Schema):
 
     def _from_nested_schema(self, obj, field):
         """Support nested field."""
+        context = getattr(obj, 'context', {})
         if isinstance(field.nested, basestring):
             nested = get_class(field.nested)
+        elif isinstance(field.nested, SchemaABC):
+            nested = field.nested.__class__
+            context.update(field.nested.context)
         else:
             nested = field.nested
 
@@ -197,7 +202,7 @@ class JSONSchema(Schema):
         if name not in self._nested_schema_classes and name != outer_name:
             wrapped_nested = JSONSchema(nested=True)
             wrapped_dumped = wrapped_nested.dump(
-                nested(only=only, exclude=exclude)
+                nested(only=only, exclude=exclude, context=context)
             )
             self._nested_schema_classes[name] = wrapped_dumped.data
             self._nested_schema_classes.update(

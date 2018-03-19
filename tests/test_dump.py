@@ -91,10 +91,49 @@ def test_nested_string_to_cls():
     class TestSchema(Schema):
         foo = fields.Integer(required=True)
 
+        def __init__(self, *args, **kwargs):
+            super(TestSchema, self).__init__(*args, **kwargs)
+
+            # test that nested schemas do not get context from Nested()
+            assert self.context.get('test_schema') != 1
+
+            # test that nested schemas can include parent context
+            if self.context.get('nested'):
+                assert self.context['test_nested_schema'] == 1
+
     class TestNestedSchema(Schema):
         foo2 = fields.Integer(required=True)
-        nested = fields.Nested('TestSchema')
-    schema = TestNestedSchema()
+        nested = fields.Nested('TestSchema', context={'test_schema': 1})
+
+    schema = TestNestedSchema(context={'nested': True, 'test_schema': 0, 'test_nested_schema': 1})
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    nested_def = dumped['definitions']['TestSchema']
+    nested_dmp = dumped['definitions']['TestNestedSchema']['properties']['nested']
+    assert nested_dmp['type'] == 'object'
+    assert nested_def['properties']['foo']['format'] == 'integer'
+
+
+def test_nested_instance():
+    class TestSchema(Schema):
+        foo = fields.Integer(required=True)
+
+        def __init__(self, *args, **kwargs):
+            super(TestSchema, self).__init__(*args, **kwargs)
+
+            # test that nested schemas keep their context
+            assert self.context['test_schema'] == 1
+
+            # test that nested schemas can include parent context
+            if self.context.get('nested'):
+                assert self.context['test_nested_schema'] == 1
+
+    class TestNestedSchema(Schema):
+        foo2 = fields.Integer(required=True)
+        nested = fields.Nested(TestSchema(context={'test_schema': 1}))
+
+    schema = TestNestedSchema(context={'nested': True, 'test_schema': 0, 'test_nested_schema': 1})
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     _validate_schema(dumped)
