@@ -6,12 +6,13 @@ from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.compat import text_type, binary_type, basestring
 from marshmallow.decorators import post_dump
-from marshmallow.utils import missing
 
 from .validation import handle_length, handle_one_of, handle_range
 
 
-__all__ = ['JSONSchema']
+__all__ = (
+    'JSONSchema',
+)
 
 
 TYPE_MAP = {
@@ -106,7 +107,6 @@ class JSONSchema(Schema):
 
     def get_properties(self, obj):
         """Fill out properties field."""
-        mapping = self._get_default_mapping(obj)
         properties = {}
 
         for field_name, field in sorted(obj.fields.items()):
@@ -246,6 +246,6 @@ class JSONSchema(Schema):
         self._nested_schema_classes[name] = data
         root = {
             'definitions': self._nested_schema_classes,
-            '$ref': '#/definitions/{}'.format(name)
+            '$ref': '#/definitions/{name}'.format(name=name)
         }
         return root
