@@ -123,10 +123,7 @@ class JSONSchema(Schema):
             if field.required:
                 required.append(field.name)
 
-        if required:
-            return required
-        else:
-            return missing
+        return required or missing
 
     def _from_python_type(self, obj, field, pytype):
         """Get schema definition from python type."""
