@@ -6,5 +6,5 @@ __license__ = 'MIT'
 from .base import JSONSchema
 
 __all__ = (
-        'JSONSchema'
+    'JSONSchema',
 )
