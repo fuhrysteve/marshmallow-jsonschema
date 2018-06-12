@@ -10,7 +10,9 @@ from marshmallow.decorators import post_dump
 from .validation import handle_length, handle_one_of, handle_range
 
 
-__all__ = ['JSONSchema']
+__all__ = (
+    'JSONSchema',
+)
 
 
 TYPE_MAP = {
@@ -105,7 +107,6 @@ class JSONSchema(Schema):
 
     def get_properties(self, obj):
         """Fill out properties field."""
-        mapping = self._get_default_mapping(obj)
         properties = {}
 
         for field_name, field in sorted(obj.fields.items()):
@@ -122,7 +123,7 @@ class JSONSchema(Schema):
             if field.required:
                 required.append(field.name)
 
-        return required
+        return required or missing
 
     def _from_python_type(self, obj, field, pytype):
         """Get schema definition from python type."""
@@ -195,7 +196,7 @@ class JSONSchema(Schema):
         # If this is not a schema we've seen, and it's not this schema,
         # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
-            wrapped_nested = JSONSchema(nested=True)
+            wrapped_nested = self.__class__(nested=True)
             wrapped_dumped = wrapped_nested.dump(
                 nested(only=only, exclude=exclude)
             )
@@ -242,6 +243,6 @@ class JSONSchema(Schema):
         self._nested_schema_classes[name] = data
         root = {
             'definitions': self._nested_schema_classes,
-            '$ref': '#/definitions/{}'.format(name)
+            '$ref': '#/definitions/{name}'.format(name=name)
         }
         return root

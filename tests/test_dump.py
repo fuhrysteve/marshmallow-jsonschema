@@ -459,3 +459,13 @@ def test_dumps_iterable_enums():
         'title': 'foo',
         'type': 'number'
     }
+
+def test_required_excluded_when_empty():
+
+    class TestSchema(Schema):
+        optional_value = fields.String()
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert 'required' not in dumped['definitions']['TestSchema']
+
