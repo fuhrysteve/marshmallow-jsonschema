@@ -441,6 +441,24 @@ def test_metadata_direct_from_field():
         'description': 'Directly on the field!',
     }
 
+def test_dumps_iterable_enums():
+    mapping = {'a': 0, 'b': 1, 'c': 2}
+
+    class TestSchema(Schema):
+        foo = fields.Integer(validate=validate.OneOf(
+            mapping.values(), labels=mapping.keys()))
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+
+    assert dumped['definitions']['TestSchema']['properties']['foo'] == {
+        'enum': [v for v in mapping.values()],
+        'enumNames': [k for k in mapping.keys()],
+        'format': 'integer',
+        'title': 'foo',
+        'type': 'number'
+    }
 
 def test_required_excluded_when_empty():
 
@@ -450,3 +468,4 @@ def test_required_excluded_when_empty():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     assert 'required' not in dumped['definitions']['TestSchema']
+
