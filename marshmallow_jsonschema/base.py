@@ -200,7 +200,10 @@ class JSONSchema(Schema):
             wrapped_dumped = wrapped_nested.dump(
                 nested(only=only, exclude=exclude)
             )
-            self._nested_schema_classes[name] = wrapped_dumped.data
+            try:
+                self._nested_schema_classes[name] = wrapped_dumped.data
+            except AttributeError:
+                self._nested_schema_classes[name] = wrapped_dumped
             self._nested_schema_classes.update(
                 wrapped_nested._nested_schema_classes
             )
