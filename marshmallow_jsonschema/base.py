@@ -2,6 +2,7 @@ import datetime
 import uuid
 import decimal
 
+import marshmallow
 from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.compat import text_type, binary_type, basestring
@@ -200,7 +201,13 @@ class JSONSchema(Schema):
             wrapped_dumped = wrapped_nested.dump(
                 nested(only=only, exclude=exclude)
             )
-            self._nested_schema_classes[name] = wrapped_dumped.data
+
+            # Handle change in return value type between Marshmallow
+            # versions 2 and 3.
+            if marshmallow.__version__.split('.', 1)[0] >= '3':
+                self._nested_schema_classes[name] = wrapped_dumped
+            else:
+                self._nested_schema_classes[name] = wrapped_dumped.data
             self._nested_schema_classes.update(
                 wrapped_nested._nested_schema_classes
             )
