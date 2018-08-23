@@ -10,11 +10,9 @@ from marshmallow.decorators import post_dump
 
 from .validation import handle_length, handle_one_of, handle_range
 
-
 __all__ = (
     'JSONSchema',
 )
-
 
 TYPE_MAP = {
     dict: {
@@ -72,7 +70,6 @@ TYPE_MAP = {
     },
 }
 
-
 FIELD_VALIDATORS = {
     validate.Length: handle_length,
     validate.OneOf: handle_one_of,
@@ -91,6 +88,7 @@ class JSONSchema(Schema):
         """Setup internal cache of nested fields, to prevent recursion."""
         self._nested_schema_classes = {}
         self.nested = kwargs.pop('nested', False)
+        self.prefer_data_key = kwargs.pop('prefer_data_key', False)
         super(JSONSchema, self).__init__(*args, **kwargs)
 
     def _get_default_mapping(self, obj):
@@ -112,7 +110,7 @@ class JSONSchema(Schema):
 
         for field_name, field in sorted(obj.fields.items()):
             schema = self._get_schema_for_field(obj, field)
-            properties[field.name] = schema
+            properties[self._get_property_name_for_field(field)] = schema
 
         return properties
 
@@ -122,16 +120,18 @@ class JSONSchema(Schema):
 
         for field_name, field in sorted(obj.fields.items()):
             if field.required:
-                required.append(field.name)
+                required.append(
+                    self._get_property_name_for_field(field)
+                )
 
         return required or missing
 
     def _from_python_type(self, obj, field, pytype):
         """Get schema definition from python type."""
         json_schema = {
-            'title': field.attribute or field.name,
+            'title': field.attribute or self._get_property_name_for_field(
+                field),
         }
-
         for key, val in TYPE_MAP[pytype].items():
             json_schema[key] = val
 
@@ -181,6 +181,20 @@ class JSONSchema(Schema):
                     schema, field, validator, obj
                 )
         return schema
+
+    def _get_property_name_for_field(self, field):
+        """Get property name for field based on serialized object"""
+        name = field.name
+
+        if self.prefer_data_key:
+            # Handle change in load_from / dump_to between Marshmallow
+            # versions 2 and 3.
+            if marshmallow.__version__.split('.', 1)[0] >= '3':
+                name = field.data_key or name
+            else:
+                name = field.load_from or field.dump_to or name
+
+        return name
 
     def _from_nested_schema(self, obj, field):
         """Support nested field."""

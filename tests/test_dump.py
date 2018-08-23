@@ -503,6 +503,7 @@ def test_use_datakey_for_title():
         class TestSchema(Schema):
             normal_field = fields.String()
             data_key = fields.String(data_key='dataKey')
+            required = fields.String(data_key='isRequired', required = True)
 
         schema = TestSchema()
         json_schema = JSONSchema(prefer_data_key=True)
@@ -516,6 +517,9 @@ def test_use_datakey_for_title():
         assert data_key is not None
         assert data_key.get('title') == 'dataKey'
 
+        required = dumped['definitions']['TestSchema']['required']
+        assert 'isRequired' in required
+
     # use load_from, then dump_to for marshmallow < v3
     else:
         class TestSchema(Schema):
@@ -523,6 +527,7 @@ def test_use_datakey_for_title():
             load_from = fields.String(load_from='loadFrom')
             dump_to = fields.String(dump_to='dumpTo')
             prefer_load_from = fields.String(load_from='both', dump_to='dumpTo')
+            required = fields.String(dump_to='isRequired', required=True)
 
         schema = TestSchema()
         json_schema = JSONSchema(prefer_data_key=True)
@@ -533,6 +538,8 @@ def test_use_datakey_for_title():
         assert normal_field.get('title') == 'normal_field'
 
         load_from = dumped['definitions']['TestSchema']['properties'].get('loadFrom')
+        import json
+        print(json.dumps(dumped, indent=4))
         assert load_from is not None
         assert load_from.get('title') == 'loadFrom'
 
@@ -543,3 +550,6 @@ def test_use_datakey_for_title():
         prefer_load_from = dumped['definitions']['TestSchema']['properties'].get('both')
         assert prefer_load_from is not None
         assert prefer_load_from.get('title') == 'both'
+
+        required = dumped['definitions']['TestSchema']['required']
+        assert 'isRequired' in required
