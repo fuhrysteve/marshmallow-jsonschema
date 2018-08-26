@@ -1,9 +1,20 @@
+import json
+
+import marshmallow
 from marshmallow import Schema, fields, validate
 from marshmallow_jsonschema import JSONSchema
 from jsonschema import Draft4Validator
 import pytest
 
-from . import BaseTest, UserSchema, Address
+from . import UserSchema, Address
+
+# marshmallow v3 doesn't do the .data thing
+if marshmallow.__version__.split('.', 1)[0] >= '3':
+    def compat_data(dumped):
+        return dumped
+else:
+    def compat_data(dumped):
+        return dumped.data
 
 
 def _validate_schema(schema):
@@ -12,20 +23,22 @@ def _validate_schema(schema):
     '''
     Draft4Validator.check_schema(schema)
 
+
 def test_dump_schema():
     schema = UserSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     assert len(schema.fields) > 1
     props = dumped['definitions']['UserSchema']['properties']
     for field_name, field in schema.fields.items():
         assert field_name in props
 
+
 def test_default():
     schema = UserSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['UserSchema']['properties']
     assert props['id']['default'] == 'no-id'
@@ -33,12 +46,14 @@ def test_default():
 
 def test_metadata():
     """Metadata should be available in the field definition."""
+
     class TestSchema(Schema):
         myfield = fields.String(metadata={'foo': 'Bar'})
         yourfield = fields.Integer(required=True, baz="waz")
+
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['TestSchema']['properties']
     assert props['myfield']['foo'] == 'Bar'
@@ -48,27 +63,31 @@ def test_metadata():
 
     # repeat process to assure idempotency
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['TestSchema']['properties']
     assert props['myfield']['foo'] == 'Bar'
     assert props['yourfield']['baz'] == 'waz'
 
+
 def test_descriptions():
     class TestSchema(Schema):
         myfield = fields.String(metadata={'description': 'Brown Cow'})
         yourfield = fields.Integer(required=True)
+
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['TestSchema']['properties']
     assert props['myfield']['description'] == 'Brown Cow'
+
 
 def test_nested_descriptions():
     class TestSchema(Schema):
         myfield = fields.String(metadata={'description': 'Brown Cow'})
         yourfield = fields.Integer(required=True)
+
     class TestNestedSchema(Schema):
         nested = fields.Nested(
             TestSchema, metadata={'description': 'Nested 1', 'title': 'Title1'})
@@ -76,7 +95,7 @@ def test_nested_descriptions():
 
     schema = TestNestedSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     nested_def = dumped['definitions']['TestSchema']
     nested_dmp = dumped['definitions']['TestNestedSchema']['properties']['nested']
@@ -94,9 +113,10 @@ def test_nested_string_to_cls():
     class TestNestedSchema(Schema):
         foo2 = fields.Integer(required=True)
         nested = fields.Nested('TestSchema')
+
     schema = TestNestedSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     nested_def = dumped['definitions']['TestSchema']
     nested_dmp = dumped['definitions']['TestNestedSchema']['properties']['nested']
@@ -110,11 +130,11 @@ def test_list():
 
     schema = ListSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     nested_json = dumped['definitions']['ListSchema']['properties']['foo']
     assert nested_json['type'] == 'array'
-    assert 'items' in  nested_json
+    assert 'items' in nested_json
     item_schema = nested_json['items']
     assert item_schema['type'] == 'string'
 
@@ -130,11 +150,11 @@ def test_list_nested():
 
     schema = ListSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     nested_json = dumped['definitions']['ListSchema']['properties']['bar']
     assert nested_json['type'] == 'array'
-    assert 'items' in  nested_json
+    assert 'items' in nested_json
     item_schema = nested_json['items']
     assert 'InnerSchema' in item_schema['$ref']
 
@@ -156,7 +176,7 @@ def test_deep_nested():
 
     schema = OuterSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     defs = dumped['definitions']
     assert 'OuterSchema' in defs
@@ -167,6 +187,7 @@ def test_deep_nested():
 
 def test_respect_only_for_nested_schema():
     """Should ignore fields not in 'only' metadata for nested schemas."""
+
     class InnerRecursiveSchema(Schema):
         id = fields.Integer(required=True)
         baz = fields.String()
@@ -183,13 +204,14 @@ def test_respect_only_for_nested_schema():
 
     schema = OuterSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
     assert 'recursive' not in inner_props
 
 
 def test_respect_exclude_for_nested_schema():
     """Should ignore fields in 'exclude' metadata for nested schemas."""
+
     class InnerRecursiveSchema(Schema):
         id = fields.Integer(required=True)
         baz = fields.String()
@@ -206,13 +228,14 @@ def test_respect_exclude_for_nested_schema():
 
     schema = OuterSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
     assert 'recursive' not in inner_props
 
 
 def test_respect_dotted_exclude_for_nested_schema():
     """Should ignore dotted fields in 'exclude' metadata for nested schemas."""
+
     class InnerRecursiveSchema(Schema):
         id = fields.Integer(required=True)
         baz = fields.String()
@@ -229,7 +252,7 @@ def test_respect_dotted_exclude_for_nested_schema():
 
     schema = OuterSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
     assert 'recursive' not in inner_props
 
@@ -249,7 +272,7 @@ def test_function():
 
     schema = FnSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     props = dumped['definitions']['FnSchema']['properties']
     assert props['fn_int']['type'] == 'number'
     assert props['fn_str']['type'] == 'string'
@@ -264,7 +287,7 @@ def test_nested_recursive():
 
     schema = RecursiveSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['RecursiveSchema']['properties']
     assert 'RecursiveSchema' in props['children']['items']['$ref']
@@ -273,35 +296,36 @@ def test_nested_recursive():
 def test_one_of_validator():
     schema = UserSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     assert (
-        dumped['definitions']['UserSchema']['properties']['sex']['enum'] == [
-            'male', 'female', 'non_binary', 'other'
-        ]
+            dumped['definitions']['UserSchema']['properties']['sex']['enum'] == [
+        'male', 'female', 'non_binary', 'other'
+    ]
     )
     assert (
-        dumped['definitions']['UserSchema']['properties']['sex'][
-            'enumNames'
-        ] == [
-            'Male', 'Female', 'Non-binary/fluid', 'Other'
-        ]
+            dumped['definitions']['UserSchema']['properties']['sex'][
+                'enumNames'
+            ] == [
+                'Male', 'Female', 'Non-binary/fluid', 'Other'
+            ]
     )
 
 
 def test_range_validator():
     schema = Address()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['Address']['properties']
     assert props['floor']['minimum'] == 1
     assert props['floor']['maximum'] == 4
 
+
 def test_length_validator():
     schema = UserSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['UserSchema']['properties']
     assert props['name']['minLength'] == 1
@@ -311,10 +335,14 @@ def test_length_validator():
     assert props['const']['minLength'] == 50
     assert props['const']['maxLength'] == 50
 
+
 def test_length_validator_value_error():
     class BadSchema(Schema):
         bob = fields.Integer(validate=validate.Length(min=1, max=3))
-    schema = BadSchema(strict=True)
+        class Meta:
+            strict = True
+
+    schema = BadSchema()
     json_schema = JSONSchema()
     with pytest.raises(ValueError):
         json_schema.dump(schema)
@@ -323,16 +351,28 @@ def test_length_validator_value_error():
 def test_handle_range_not_number_returns_same_instance():
     class SchemaWithStringRange(Schema):
         floor = fields.String(validate=validate.Range(min=1, max=4))
+        class Meta:
+            strict = True
+
     class SchemaWithNoRange(Schema):
         floor = fields.String()
+        class Meta:
+            strict = True
+
     class SchemaWithIntRangeValidate(Schema):
         floor = fields.Integer(validate=validate.Range(min=1, max=4))
+        class Meta:
+            strict = True
+
     class SchemaWithIntRangeNoValidate(Schema):
         floor = fields.Integer()
-    schema1 = SchemaWithStringRange(strict=True)
-    schema2 = SchemaWithNoRange(strict=True)
-    schema3 = SchemaWithIntRangeValidate(strict=True)
-    schema4 = SchemaWithIntRangeNoValidate(strict=True)
+        class Meta:
+            strict = True
+
+    schema1 = SchemaWithStringRange()
+    schema2 = SchemaWithNoRange()
+    schema3 = SchemaWithIntRangeValidate()
+    schema4 = SchemaWithIntRangeNoValidate()
     json_schema = JSONSchema()
     json_schema.dump(schema1) == json_schema.dump(schema2)
     json_schema.dump(schema3) != json_schema.dump(schema4)
@@ -341,13 +381,19 @@ def test_handle_range_not_number_returns_same_instance():
 def test_handle_range_no_minimum():
     class SchemaMin(Schema):
         floor = fields.Integer(validate=validate.Range(min=1, max=4))
+        class Meta:
+            strict = True
+
     class SchemaNoMin(Schema):
         floor = fields.Integer(validate=validate.Range(max=4))
-    schema1 = SchemaMin(strict=True)
-    schema2 = SchemaNoMin(strict=True)
+        class Meta:
+            strict = True
+
+    schema1 = SchemaMin()
+    schema2 = SchemaNoMin()
     json_schema = JSONSchema()
-    dumped1 = json_schema.dump(schema1).data['definitions']['SchemaMin']
-    dumped2 = json_schema.dump(schema2).data['definitions']['SchemaNoMin']
+    dumped1 = compat_data(json_schema.dump(schema1))['definitions']['SchemaMin']
+    dumped2 = compat_data(json_schema.dump(schema2))['definitions']['SchemaNoMin']
     dumped1['properties']['floor']['minimum'] == 1
     dumped1['properties']['floor']['exclusiveMinimum'] is True
     dumped2['properties']['floor']['minimum'] == 0
@@ -358,16 +404,17 @@ def test_title():
     class TestSchema(Schema):
         myfield = fields.String(metadata={'title': 'Brown Cowzz'})
         yourfield = fields.Integer(required=True)
+
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     _validate_schema(dumped)
     assert dumped['definitions']['TestSchema']['properties']['myfield'][
-        'title'
-    ] == 'Brown Cowzz'
+               'title'
+           ] == 'Brown Cowzz'
+
 
 def test_unknown_typed_field_throws_valueerror():
-
     class Invalid(fields.Field):
         def _serialize(self, value, attr, obj):
             return value
@@ -378,10 +425,10 @@ def test_unknown_typed_field_throws_valueerror():
     schema = UserSchema()
     json_schema = JSONSchema()
     with pytest.raises(ValueError):
-        json_schema.dump(schema).data
+        compat_data(json_schema.dump(schema))
+
 
 def test_unknown_typed_field():
-
     class Colour(fields.Field):
 
         def _jsonschema_type_mapping(self):
@@ -402,10 +449,10 @@ def test_unknown_typed_field():
 
     schema = UserSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     assert dumped['definitions']['UserSchema']['properties'][
-        'favourite_colour'
-    ] == {'type': 'string'}
+               'favourite_colour'
+           ] == {'type': 'string'}
 
 
 def test_readonly():
@@ -415,31 +462,34 @@ def test_readonly():
 
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     assert dumped['definitions']['TestSchema']['properties'][
-        'readonly_fld'
-    ] == {
-        'title': 'readonly_fld',
-        'type': 'string',
-        'readonly': True,
-    }
+               'readonly_fld'
+           ] == {
+               'title': 'readonly_fld',
+               'type': 'string',
+               'readonly': True,
+           }
+
 
 def test_metadata_direct_from_field():
     """Should be able to get metadata without accessing metadata kwarg."""
+
     class TestSchema(Schema):
         id = fields.Integer(required=True)
         metadata_field = fields.String(description='Directly on the field!')
 
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     assert dumped['definitions']['TestSchema']['properties'][
-        'metadata_field'
-    ] == {
-        'title': 'metadata_field',
-        'type': 'string',
-        'description': 'Directly on the field!',
-    }
+               'metadata_field'
+           ] == {
+               'title': 'metadata_field',
+               'type': 'string',
+               'description': 'Directly on the field!',
+           }
+
 
 def test_dumps_iterable_enums():
     mapping = {'a': 0, 'b': 1, 'c': 2}
@@ -450,7 +500,7 @@ def test_dumps_iterable_enums():
 
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
 
     assert dumped['definitions']['TestSchema']['properties']['foo'] == {
         'enum': [v for v in mapping.values()],
@@ -460,12 +510,69 @@ def test_dumps_iterable_enums():
         'type': 'number'
     }
 
-def test_required_excluded_when_empty():
 
+def test_required_excluded_when_empty():
     class TestSchema(Schema):
         optional_value = fields.String()
+
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema).data
+    dumped = compat_data(json_schema.dump(schema))
     assert 'required' not in dumped['definitions']['TestSchema']
 
+
+def test_use_datakey_for_title():
+    # use datakey for marshmallow v3
+    if marshmallow.__version__.split('.', 1)[0] >= '3':
+        class TestSchema(Schema):
+            normal_field = fields.String()
+            data_key = fields.String(data_key='dataKey')
+            required = fields.String(data_key='isRequired', required = True)
+
+        schema = TestSchema()
+        json_schema = JSONSchema(prefer_data_key=True)
+        dumped = compat_data(json_schema.dump(schema))
+
+        normal_field = dumped['definitions']['TestSchema']['properties'].get('normal_field')
+        assert normal_field is not None
+        assert normal_field.get('title') == 'normal_field'
+
+        data_key = dumped['definitions']['TestSchema']['properties'].get('dataKey')
+        assert data_key is not None
+        assert data_key.get('title') == 'dataKey'
+
+        required = dumped['definitions']['TestSchema']['required']
+        assert 'isRequired' in required
+
+    # use load_from, then dump_to for marshmallow < v3
+    else:
+        class TestSchema(Schema):
+            normal_field = fields.String()
+            load_from = fields.String(load_from='loadFrom')
+            dump_to = fields.String(dump_to='dumpTo')
+            prefer_load_from = fields.String(load_from='both', dump_to='dumpTo')
+            required = fields.String(dump_to='isRequired', required=True)
+
+        schema = TestSchema()
+        json_schema = JSONSchema(prefer_data_key=True)
+        dumped = compat_data(json_schema.dump(schema))
+
+        normal_field = dumped['definitions']['TestSchema']['properties'].get('normal_field')
+        assert normal_field is not None
+        assert normal_field.get('title') == 'normal_field'
+
+        load_from = dumped['definitions']['TestSchema']['properties'].get('loadFrom')
+        print(json.dumps(dumped, indent=4))
+        assert load_from is not None
+        assert load_from.get('title') == 'loadFrom'
+
+        dump_to = dumped['definitions']['TestSchema']['properties'].get('dumpTo')
+        assert dump_to is not None
+        assert dump_to.get('title') == 'dumpTo'
+
+        prefer_load_from = dumped['definitions']['TestSchema']['properties'].get('both')
+        assert prefer_load_from is not None
+        assert prefer_load_from.get('title') == 'both'
+
+        required = dumped['definitions']['TestSchema']['required']
+        assert 'isRequired' in required
