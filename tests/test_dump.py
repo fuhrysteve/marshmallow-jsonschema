@@ -349,9 +349,9 @@ def test_handle_range_no_minimum():
     dumped1 = json_schema.dump(schema1).data['definitions']['SchemaMin']
     dumped2 = json_schema.dump(schema2).data['definitions']['SchemaNoMin']
     dumped1['properties']['floor']['minimum'] == 1
-    dumped1['properties']['floor']['exclusiveMinimum'] is True
-    dumped2['properties']['floor']['minimum'] == 0
-    dumped2['properties']['floor']['exclusiveMinimum'] is False
+    'exclusiveMinimum' not in dumped1['properties']['floor'].keys()
+    'minimum' not in dumped2['properties']['floor']
+    'exclusiveMinimum' not in dumped2['properties']['floor']
 
 
 def test_title():
@@ -468,4 +468,3 @@ def test_required_excluded_when_empty():
     json_schema = JSONSchema()
     dumped = json_schema.dump(schema).data
     assert 'required' not in dumped['definitions']['TestSchema']
-
