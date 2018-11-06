@@ -47,6 +47,30 @@ def test_default():
     props = dumped['definitions']['UserSchema']['properties']
     assert props['id']['default'] == 'no-id'
 
+
+def test_metadata():
+    """Metadata should be available in the field definition."""
+    class TestSchema(Schema):
+        myfield = fields.String(metadata={'foo': 'Bar'})
+        yourfield = fields.Integer(required=True, baz="waz")
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    props = dumped['definitions']['TestSchema']['properties']
+    assert props['myfield']['foo'] == 'Bar'
+    assert props['yourfield']['baz'] == 'waz'
+    assert 'metadata' not in props['myfield']
+    assert 'metadata' not in props['yourfield']
+
+    # repeat process to assure idempotency
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    _validate_schema(dumped)
+    props = dumped['definitions']['TestSchema']['properties']
+    assert props['myfield']['foo'] == 'Bar'
+    assert props['yourfield']['baz'] == 'waz'
+
 def test_descriptions():
     class TestSchema(Schema):
         myfield = fields.String(metadata={'description': 'Brown Cow'})
@@ -158,6 +182,75 @@ def test_deep_nested():
     assert 'InnerSchema' in defs
 
 
+def test_respect_only_for_nested_schema():
+    """Should ignore fields not in 'only' metadata for nested schemas."""
+    class InnerRecursiveSchema(Schema):
+        id = fields.Integer(required=True)
+        baz = fields.String()
+        recursive = fields.Nested('InnerRecursiveSchema')
+
+    class MiddleSchema(Schema):
+        id = fields.Integer(required=True)
+        bar = fields.String()
+        inner = fields.Nested('InnerRecursiveSchema', only=('id', 'baz'))
+
+    class OuterSchema(Schema):
+        foo2 = fields.Integer(required=True)
+        nested = fields.Nested('MiddleSchema')
+
+    schema = OuterSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
+    assert 'recursive' not in inner_props
+
+
+def test_respect_exclude_for_nested_schema():
+    """Should ignore fields in 'exclude' metadata for nested schemas."""
+    class InnerRecursiveSchema(Schema):
+        id = fields.Integer(required=True)
+        baz = fields.String()
+        recursive = fields.Nested('InnerRecursiveSchema')
+
+    class MiddleSchema(Schema):
+        id = fields.Integer(required=True)
+        bar = fields.String()
+        inner = fields.Nested('InnerRecursiveSchema', exclude=('recursive',))
+
+    class OuterSchema(Schema):
+        foo2 = fields.Integer(required=True)
+        nested = fields.Nested('MiddleSchema')
+
+    schema = OuterSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
+    assert 'recursive' not in inner_props
+
+
+def test_respect_dotted_exclude_for_nested_schema():
+    """Should ignore dotted fields in 'exclude' metadata for nested schemas."""
+    class InnerRecursiveSchema(Schema):
+        id = fields.Integer(required=True)
+        baz = fields.String()
+        recursive = fields.Nested('InnerRecursiveSchema')
+
+    class MiddleSchema(Schema):
+        id = fields.Integer(required=True)
+        bar = fields.String()
+        inner = fields.Nested('InnerRecursiveSchema')
+
+    class OuterSchema(Schema):
+        foo2 = fields.Integer(required=True)
+        nested = fields.Nested('MiddleSchema', exclude=('inner.recursive',))
+
+    schema = OuterSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
+    assert 'recursive' not in inner_props
+
+
 def test_function():
     """Function fields can be serialised if type is given."""
 
@@ -201,7 +294,14 @@ def test_one_of_validator():
     _validate_schema(dumped)
     assert (
         dumped['definitions']['UserSchema']['properties']['sex']['enum'] == [
-            'male', 'female'
+            'male', 'female', 'non_binary', 'other'
+        ]
+    )
+    assert (
+        dumped['definitions']['UserSchema']['properties']['sex'][
+            'enumNames'
+        ] == [
+            'Male', 'Female', 'Non-binary/fluid', 'Other'
         ]
     )
 
@@ -340,3 +440,49 @@ def test_readonly():
         'type': 'string',
         'readonly': True,
     }
+
+def test_metadata_direct_from_field():
+    """Should be able to get metadata without accessing metadata kwarg."""
+    class TestSchema(Schema):
+        id = fields.Integer(required=True)
+        metadata_field = fields.String(description='Directly on the field!')
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert dumped['definitions']['TestSchema']['properties'][
+        'metadata_field'
+    ] == {
+        'title': 'metadata_field',
+        'type': 'string',
+        'description': 'Directly on the field!',
+    }
+
+def test_dumps_iterable_enums():
+    mapping = {'a': 0, 'b': 1, 'c': 2}
+
+    class TestSchema(Schema):
+        foo = fields.Integer(validate=validate.OneOf(
+            mapping.values(), labels=mapping.keys()))
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+
+    assert dumped['definitions']['TestSchema']['properties']['foo'] == {
+        'enum': [v for v in mapping.values()],
+        'enumNames': [k for k in mapping.keys()],
+        'format': 'integer',
+        'title': 'foo',
+        'type': 'number'
+    }
+
+def test_required_excluded_when_empty():
+
+    class TestSchema(Schema):
+        optional_value = fields.String()
+    schema = TestSchema()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert 'required' not in dumped['definitions']['TestSchema']
+

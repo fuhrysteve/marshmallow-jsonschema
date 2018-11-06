@@ -37,7 +37,10 @@ class UserSchema(Schema):
     time_registered = fields.Time()
     birthdate = fields.Date()
     since_created = fields.TimeDelta()
-    sex = fields.Str(validate=validate.OneOf(['male', 'female']))
+    sex = fields.Str(validate=validate.OneOf(
+        choices=['male', 'female', 'non_binary', 'other'],
+        labels=['Male', 'Female', 'Non-binary/fluid', 'Other']
+    ))
     various_data = fields.Dict()
     addresses = fields.Nested(Address, many=True,
                               validate=validate.Length(min=1, max=3))

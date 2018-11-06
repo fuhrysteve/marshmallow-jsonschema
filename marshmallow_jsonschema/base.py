@@ -4,6 +4,8 @@ import decimal
 
 from collections import OrderedDict
 
+
+import marshmallow
 from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.compat import text_type, binary_type, basestring
@@ -12,7 +14,9 @@ from marshmallow.decorators import post_dump
 from .validation import handle_length, handle_one_of, handle_range
 
 
-__all__ = ['JSONSchema']
+__all__ = (
+    'JSONSchema',
+)
 
 
 TYPE_MAP = {
@@ -107,7 +111,6 @@ class JSONSchema(Schema):
 
     def get_properties(self, obj):
         """Fill out properties field."""
-        mapping = self._get_default_mapping(obj)
         properties = OrderedDict()
 
         for field_name, field in obj.fields.items():
@@ -124,7 +127,7 @@ class JSONSchema(Schema):
             if field.required:
                 required.append(field.name)
 
-        return required
+        return required or missing
 
     def _from_python_type(self, obj, field, pytype):
         """Get schema definition from python type."""
@@ -141,13 +144,14 @@ class JSONSchema(Schema):
         if field.default is not missing:
             json_schema['default'] = field.default
 
-        if field.metadata.get('metadata', {}).get('description'):
-            json_schema['description'] = (
-                field.metadata['metadata'].get('description')
-            )
+        # NOTE: doubled up to maintain backwards compatibility
+        metadata = field.metadata.get('metadata', {})
+        metadata.update(field.metadata)
 
-        if field.metadata.get('metadata', {}).get('title'):
-            json_schema['title'] = field.metadata['metadata'].get('title')
+        for md_key, md_val in metadata.items():
+            if md_key == 'metadata':
+                continue
+            json_schema[md_key] = md_val
 
         if isinstance(field, fields.List):
             json_schema['items'] = self._get_schema_for_field(
@@ -190,15 +194,23 @@ class JSONSchema(Schema):
 
         name = nested.__name__
         outer_name = obj.__class__.__name__
+        only = field.only
+        exclude = field.exclude
 
         # If this is not a schema we've seen, and it's not this schema,
         # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
-            wrapped_nested = JSONSchema(nested=True)
+            wrapped_nested = self.__class__(nested=True)
             wrapped_dumped = wrapped_nested.dump(
-                nested()
+                nested(only=only, exclude=exclude)
             )
-            self._nested_schema_classes[name] = wrapped_dumped.data
+
+            # Handle change in return value type between Marshmallow
+            # versions 2 and 3.
+            if marshmallow.__version__.split('.', 1)[0] >= '3':
+                self._nested_schema_classes[name] = wrapped_dumped
+            else:
+                self._nested_schema_classes[name] = wrapped_dumped.data
             self._nested_schema_classes.update(
                 wrapped_nested._nested_schema_classes
             )
@@ -209,13 +221,14 @@ class JSONSchema(Schema):
             '$ref': '#/definitions/{}'.format(name)
         }
 
-        if field.metadata.get('metadata', {}).get('description'):
-            schema['description'] = (
-                field.metadata['metadata'].get('description')
-            )
+        # NOTE: doubled up to maintain backwards compatibility
+        metadata = field.metadata.get('metadata', {})
+        metadata.update(field.metadata)
 
-        if field.metadata.get('metadata', {}).get('title'):
-            schema['title'] = field.metadata['metadata'].get('title')
+        for md_key, md_val in metadata.items():
+            if md_key == 'metadata':
+                continue
+            schema[md_key] = md_val
 
         if field.many:
             schema = {
@@ -240,6 +253,6 @@ class JSONSchema(Schema):
         self._nested_schema_classes[name] = data
         root = {
             'definitions': self._nested_schema_classes,
-            '$ref': '#/definitions/{}'.format(name)
+            '$ref': '#/definitions/{name}'.format(name=name)
         }
         return root
