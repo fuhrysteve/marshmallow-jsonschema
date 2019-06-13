@@ -5,7 +5,7 @@ import decimal
 import marshmallow
 from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
-from .compat import text_type, binary_type, basestring
+from .compat import text_type, binary_type, basestring, dot_data_backwards_compatable
 from marshmallow.decorators import post_dump
 
 from .validation import handle_length, handle_one_of, handle_range
@@ -204,10 +204,9 @@ class JSONSchema(Schema):
 
             # Handle change in return value type between Marshmallow
             # versions 2 and 3.
-            if marshmallow.__version__.split('.', 1)[0] >= '3':
-                self._nested_schema_classes[name] = wrapped_dumped
-            else:
-                self._nested_schema_classes[name] = wrapped_dumped.data
+            self._nested_schema_classes[name] = dot_data_backwards_compatable(
+                wrapped_dumped)
+
             self._nested_schema_classes.update(
                 wrapped_nested._nested_schema_classes
             )

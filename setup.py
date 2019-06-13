@@ -5,6 +5,7 @@ def read(fname):
     with open(fname) as fp:
         return fp.read()
 
+
 try:
     import pypandoc
     long_description = pypandoc.convert('README.md', 'rst')
@@ -14,7 +15,8 @@ except (IOError, ImportError, OSError):
 setup(
     name='marshmallow-jsonschema',
     version='0.4.0',
-    description='JSON Schema Draft v4 (http://json-schema.org/) formatting with marshmallow',
+    description='JSON Schema Draft v4 (http://json-schema.org/)'
+                ' formatting with marshmallow',
     long_description=long_description,
     author='Stephen Fuhry',
     author_email='fuhrysteve@gmail.com',
@@ -23,7 +25,12 @@ setup(
     package_dir={'marshmallow-jsonschema': 'marshmallow-jsonschema'},
     include_package_data=True,
     install_requires=['marshmallow>=2.9.0'],
-    tests_require=['pytest>=2.9.2', 'jsonschema', 'strict-rfc3339', 'coverage>=4.1'],
+    tests_require=[
+        'coverage>=4.1',
+        'jsonschema>=2.6.0',
+        'pytest>=2.9.2',
+        'strict-rfc3339',
+    ],
     license=read('LICENSE'),
     zip_safe=False,
     keywords=('marshmallow-jsonschema marshmallow schema serialization '
