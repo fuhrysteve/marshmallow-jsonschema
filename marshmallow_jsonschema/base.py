@@ -5,7 +5,7 @@ import decimal
 import marshmallow
 from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
-from marshmallow.compat import text_type, binary_type, basestring
+from .compat import text_type, binary_type, basestring
 from marshmallow.decorators import post_dump
 
 from .validation import handle_length, handle_one_of, handle_range
