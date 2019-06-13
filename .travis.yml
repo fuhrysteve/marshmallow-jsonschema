@@ -1,5 +1,6 @@
 # Config file for automatic testing at travis-ci.org
 
+dist: xenial
 language: python
 sudo: false
 python:
