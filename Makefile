@@ -2,7 +2,7 @@ SHELL := /bin/bash -euo pipefail
 
 installcheck:
 	pip install -U .[reco]
-	pip install pytest>=3 strict-rfc3339 jsonschema coveralls coverage
+	pip install pytest>=4.6.3 strict-rfc3339 jsonschema coveralls coverage>=4.5.3
 
 check:
 	py.test -v
