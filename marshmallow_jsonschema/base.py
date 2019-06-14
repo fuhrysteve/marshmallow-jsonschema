@@ -228,7 +228,7 @@ class JSONSchema(Schema):
 
         if field.many:
             schema = {
-                'type': ["array"] if field.required else ['array', 'null'],
+                'type': "array" if field.required else ['array', 'null'],
                 'items': schema,
             }
 
