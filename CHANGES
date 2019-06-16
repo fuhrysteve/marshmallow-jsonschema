@@ -1,3 +1,11 @@
+0.6.0 (2019-06-16)
+    - lots of various fixes
+    - fix compatibility with brutusin/json-form
+    - drop support for python 3.3
+
+0.5.0 (2018-07-17)
+    - support for marshmallow 3
+
 0.4.0 (2017-07-13)
     - add support for fields.List (thanks @Bartvds and @sdayu
       for tests & implementation)
