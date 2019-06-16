@@ -26,6 +26,23 @@ def test_dump_schema():
     for field_name, field in schema.fields.items():
         assert field_name in props
 
+def test_dump_ordered():
+    """Order should be preserved."""
+
+    class AddressOrdered(Address):
+        """Just set ordered meta field."""
+
+        class Meta:  # noqa
+            ordered = True
+
+    schema = AddressOrdered()
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema).data
+    assert (
+        list(dumped['definitions']['AddressOrdered']['properties'].keys()) ==
+        ['id', 'street', 'number', 'city', 'floor']
+    )
+
 def test_default():
     schema = UserSchema()
     json_schema = JSONSchema()
