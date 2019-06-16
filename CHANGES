@@ -2,6 +2,8 @@
     - lots of various fixes
     - fix compatibility with brutusin/json-form
     - drop support for python 3.3
+    - fix BC breaks in marshmallow 3 (someday it will be released!!)
+    - probably (hopefully?) the last major version to support py2!
 
 0.5.0 (2018-07-17)
     - support for marshmallow 3
