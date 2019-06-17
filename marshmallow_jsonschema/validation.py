@@ -95,13 +95,8 @@ def handle_range(schema, field, validator, parent_schema):
 
     if validator.min:
         schema['minimum'] = validator.min
-        schema['exclusiveMinimum'] = True
-    else:
-        schema['minimum'] = 0
-        schema['exclusiveMinimum'] = False
 
     if validator.max:
         schema['maximum'] = validator.max
-        schema['exclusiveMaximum'] = True
 
     return schema
