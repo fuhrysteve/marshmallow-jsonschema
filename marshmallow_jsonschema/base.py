@@ -226,7 +226,7 @@ class JSONSchema(Schema):
                 continue
             schema[md_key] = md_val
 
-        if field.many:
+        if hasattr(field, 'many') and field.many:
             schema = {
                 'type': "array" if field.required else ['array', 'null'],
                 'items': schema,

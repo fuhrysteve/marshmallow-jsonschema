@@ -42,8 +42,8 @@ class UserSchema(Schema):
         labels=['Male', 'Female', 'Non-binary/fluid', 'Other']
     ))
     various_data = fields.Dict()
-    addresses = fields.Nested(Address, many=True,
-                              validate=validate.Length(min=1, max=3))
+    addresses = fields.List(fields.Nested(Address),
+                            validate=validate.Length(min=1, max=3))
     github = fields.Nested(GithubProfile)
     const = fields.String(validate=validate.Length(equal=50))
 

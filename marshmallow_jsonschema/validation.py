@@ -95,8 +95,16 @@ def handle_range(schema, field, validator, parent_schema):
 
     if validator.min:
         schema['minimum'] = validator.min
+        if hasattr(validator, 'min_inclusive'):
+            # marshmallow 3 supports min_inclusive
+            schema['exclusiveMinimum'] = validator.min_inclusive
+    else:
+        schema['minimum'] = 0
+        schema['exclusiveMinimum'] = 0
 
     if validator.max:
         schema['maximum'] = validator.max
+        if hasattr(validator, 'max_inclusive'):
+            schema['exclusiveMaximum'] = validator.max_inclusive
 
     return schema

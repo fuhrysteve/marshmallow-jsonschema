@@ -1,13 +1,11 @@
-from marshmallow import Schema, fields, validate
-from marshmallow_jsonschema import JSONSchema
-from marshmallow_jsonschema.compat import dot_data_backwards_compatable
-from jsonschema import Draft4Validator
 import pytest
+from marshmallow import Schema, fields, validate
+from jsonschema import Draft4Validator, Draft6Validator, Draft7Validator
+
+from marshmallow_jsonschema import JSONSchema
+from marshmallow_jsonschema.compat import dot_data_backwards_compatable, marshmallow_2
 
 from . import BaseTest, UserSchema, Address
-
-
-
 
 
 def _validate_schema(schema):
@@ -15,6 +13,8 @@ def _validate_schema(schema):
     raises jsonschema.exceptions.SchemaError
     '''
     Draft4Validator.check_schema(schema)
+    Draft6Validator.check_schema(schema)
+    Draft7Validator.check_schema(schema)
 
 def test_dump_schema():
     schema = UserSchema()
@@ -264,7 +264,7 @@ def test_nested_recursive():
 
     class RecursiveSchema(Schema):
         foo = fields.Integer(required=True)
-        children = fields.Nested('RecursiveSchema', many=True)
+        children = fields.List(fields.Nested('RecursiveSchema'))
 
     schema = RecursiveSchema()
     json_schema = JSONSchema()
@@ -371,6 +371,26 @@ def test_handle_range_no_minimum():
     'minimum' not in dumped2['properties']['floor']
     'exclusiveMinimum' not in dumped2['properties']['floor']
 
+
+@pytest.mark.skipif(
+    marshmallow_2,
+    reason="Marshmallow 2 doesn't support min_exclusive and max_exclusive")
+def test_handle_range_no_minimum():
+    class SchemaMin(Schema):
+        floor = fields.Integer(validate=validate.Range(min_inclusive=1, max_inclusive=4))
+        class Meta:
+            strict = True
+    class SchemaNoMin(Schema):
+        floor = fields.Integer(validate=validate.Range(max=4))
+        class Meta:
+            strict = True
+    schema1 = SchemaMin()
+    schema2 = SchemaNoMin()
+    json_schema = JSONSchema()
+    dumped1 = dot_data_backwards_compatable(json_schema.dump(schema1))['definitions']['SchemaMin']
+    dumped2 = dot_data_backwards_compatable(json_schema.dump(schema2))['definitions']['SchemaNoMin']
+    dumped1['properties']['floor']['exclusiveMinimum'] == 1
+    dumped2['properties']['floor']['exclusiveMinimum'] == 0
 
 def test_title():
     class TestSchema(Schema):

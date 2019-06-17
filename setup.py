@@ -27,7 +27,7 @@ setup(
     install_requires=['marshmallow>=2.9.0'],
     tests_require=[
         'coverage>=4.5.3',
-        'jsonschema>=2.6.0',
+        'jsonschema>=3.0.1',
         'pytest>=4.6.3',
         'strict-rfc3339',
     ],
