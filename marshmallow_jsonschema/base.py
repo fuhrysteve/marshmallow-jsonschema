@@ -8,7 +8,8 @@ from marshmallow.class_registry import get_class
 from .compat import text_type, binary_type, basestring, dot_data_backwards_compatable
 from marshmallow.decorators import post_dump
 
-from .validation import handle_length, handle_one_of, handle_range
+from .validation import (handle_length, handle_one_of, handle_range,
+                         handle_regexp)
 
 
 __all__ = (
@@ -77,6 +78,7 @@ FIELD_VALIDATORS = {
     validate.Length: handle_length,
     validate.OneOf: handle_one_of,
     validate.Range: handle_range,
+    validate.Regexp: handle_regexp
 }
 
 

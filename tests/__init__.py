@@ -46,6 +46,7 @@ class UserSchema(Schema):
                               validate=validate.Length(min=1, max=3))
     github = fields.Nested(GithubProfile)
     const = fields.String(validate=validate.Length(equal=50))
+    hex_number = fields.String(validate=validate.Regexp('^[a-fA-F0-9]+$'))
 
 
 class BaseTest(unittest.TestCase):

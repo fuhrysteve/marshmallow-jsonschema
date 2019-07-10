@@ -486,3 +486,11 @@ def test_required_excluded_when_empty():
     json_schema = JSONSchema()
     dumped = dot_data_backwards_compatable(json_schema.dump(schema))
     assert 'required' not in dumped['definitions']['TestSchema']
+
+
+def test_regexp_validator():
+    schema = UserSchema()
+    json_schema = JSONSchema()
+    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    _validate_schema(dumped)
+    assert dumped['properties']['hex_number']['pattern'] == '^[a-fA-F0-9]+$'
