@@ -100,3 +100,29 @@ def handle_range(schema, field, validator, parent_schema):
         schema['maximum'] = validator.max
 
     return schema
+
+
+def handle_regexp(schema, field, validator, parent_schema):
+    """Adds validation logic for ``marshmallow.validate.Regexp``, setting the
+    values appropriately for ``fields.String`` and its subclasses.
+
+    Args:
+        schema (dict): The original JSON schema we generated. This is what we
+            want to post-process.
+        field (fields.Field): The field that generated the original schema and
+            who this post-processor belongs to.
+        validator (marshmallow.validate.Regexp): The validator attached to the
+            passed in field.
+        parent_schema (marshmallow.Schema): The Schema instance that the field
+            belongs to.
+
+    Returns:
+        dict: A, possibly, new JSON Schema that has been post processed and
+            altered.
+    """
+    if not isinstance(field, fields.String):
+        return schema
+
+    if validator.regex and getattr(validator.regex, 'pattern', None):
+        schema['pattern'] = validator.regex.pattern
+    return schema
