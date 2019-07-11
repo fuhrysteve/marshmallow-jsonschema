@@ -413,8 +413,15 @@ def test_handle_range_not_number_returns_same_instance():
     schema3 = SchemaWithIntRangeValidate()
     schema4 = SchemaWithIntRangeNoValidate()
     json_schema = JSONSchema()
-    json_schema.dump(schema1) == json_schema.dump(schema2)
-    json_schema.dump(schema3) != json_schema.dump(schema4)
+
+    # Delete "$ref" as root object names will obviously differ for schemas with different names
+    dumped_1 = json_schema.dump(schema1).data
+    del dumped_1["$ref"]
+    dumped_2 = json_schema.dump(schema2).data
+    del dumped_2["$ref"]
+
+    assert dumped_1 == dumped_2
+    assert json_schema.dump(schema3) != json_schema.dump(schema4)
 
 
 def test_handle_range_no_minimum():
@@ -436,10 +443,10 @@ def test_handle_range_no_minimum():
 
     dumped1 = dot_data_backwards_compatible(json_schema.dump(schema1))['definitions']['SchemaMin']
     dumped2 = dot_data_backwards_compatible(json_schema.dump(schema2))['definitions']['SchemaNoMin']
-    dumped1['properties']['floor']['minimum'] == 1
-    'exclusiveMinimum' not in dumped1['properties']['floor'].keys()
-    'minimum' not in dumped2['properties']['floor']
-    'exclusiveMinimum' not in dumped2['properties']['floor']
+    assert dumped1['properties']['floor']['minimum'] == 1
+    assert 'exclusiveMinimum' not in dumped1['properties']['floor'].keys()
+    assert 'minimum' not in dumped2['properties']['floor']
+    assert 'exclusiveMinimum' not in dumped2['properties']['floor']
 
 
 def test_title():
