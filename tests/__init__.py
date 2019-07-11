@@ -46,11 +46,3 @@ class UserSchema(Schema):
                               validate=validate.Length(min=1, max=3))
     github = fields.Nested(GithubProfile)
     const = fields.String(validate=validate.Length(equal=50))
-
-
-class BaseTest(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
