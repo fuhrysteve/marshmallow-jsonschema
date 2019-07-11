@@ -4,10 +4,7 @@ from marshmallow_jsonschema.compat import dot_data_backwards_compatible
 from jsonschema import Draft4Validator
 import pytest
 
-from . import BaseTest, UserSchema, Address
-
-
-
+from . import UserSchema, Address
 
 
 def _validate_schema(schema):
