@@ -1,15 +1,13 @@
 import datetime
-import uuid
 import decimal
+import uuid
 
-import marshmallow
 from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
-from .compat import text_type, binary_type, basestring, dot_data_backwards_compatable
 from marshmallow.decorators import post_dump
 
+from .compat import text_type, binary_type, basestring, dot_data_backwards_compatible
 from .validation import handle_length, handle_one_of, handle_range
-
 
 __all__ = (
     'JSONSchema',
@@ -204,7 +202,7 @@ class JSONSchema(Schema):
 
             # Handle change in return value type between Marshmallow
             # versions 2 and 3.
-            self._nested_schema_classes[name] = dot_data_backwards_compatable(
+            self._nested_schema_classes[name] = dot_data_backwards_compatible(
                 wrapped_dumped)
 
             self._nested_schema_classes.update(

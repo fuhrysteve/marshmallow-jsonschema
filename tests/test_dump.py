@@ -1,6 +1,6 @@
 from marshmallow import Schema, fields, validate
 from marshmallow_jsonschema import JSONSchema
-from marshmallow_jsonschema.compat import dot_data_backwards_compatable
+from marshmallow_jsonschema.compat import dot_data_backwards_compatible
 from jsonschema import Draft4Validator
 import pytest
 
@@ -19,7 +19,7 @@ def _validate_schema(schema):
 def test_dump_schema():
     schema = UserSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     assert len(schema.fields) > 1
     props = dumped['definitions']['UserSchema']['properties']
@@ -29,7 +29,7 @@ def test_dump_schema():
 def test_default():
     schema = UserSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['UserSchema']['properties']
     assert props['id']['default'] == 'no-id'
@@ -42,7 +42,7 @@ def test_metadata():
         yourfield = fields.Integer(required=True, baz="waz")
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['TestSchema']['properties']
     assert props['myfield']['foo'] == 'Bar'
@@ -52,7 +52,7 @@ def test_metadata():
 
     # repeat process to assure idempotency
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['TestSchema']['properties']
     assert props['myfield']['foo'] == 'Bar'
@@ -64,7 +64,7 @@ def test_descriptions():
         yourfield = fields.Integer(required=True)
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['TestSchema']['properties']
     assert props['myfield']['description'] == 'Brown Cow'
@@ -80,7 +80,7 @@ def test_nested_descriptions():
 
     schema = TestNestedSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     nested_def = dumped['definitions']['TestSchema']
     nested_dmp = dumped['definitions']['TestNestedSchema']['properties']['nested']
@@ -100,7 +100,7 @@ def test_nested_string_to_cls():
         nested = fields.Nested('TestSchema999')
     schema = TestNestedSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     nested_def = dumped['definitions']['TestSchema999']
     nested_dmp = dumped['definitions']['TestNestedSchema']['properties']['nested']
@@ -114,7 +114,7 @@ def test_list():
 
     schema = ListSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     nested_json = dumped['definitions']['ListSchema']['properties']['foo']
     assert nested_json['type'] == 'array'
@@ -134,7 +134,7 @@ def test_list_nested():
 
     schema = ListSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     nested_json = dumped['definitions']['ListSchema']['properties']['bar']
     assert nested_json['type'] == 'array'
@@ -160,7 +160,7 @@ def test_deep_nested():
 
     schema = OuterSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     defs = dumped['definitions']
     assert 'OuterSchema' in defs
@@ -187,7 +187,7 @@ def test_respect_only_for_nested_schema():
 
     schema = OuterSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
     assert 'recursive' not in inner_props
 
@@ -210,7 +210,7 @@ def test_respect_exclude_for_nested_schema():
 
     schema = OuterSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
     assert 'recursive' not in inner_props
 
@@ -233,7 +233,7 @@ def test_respect_dotted_exclude_for_nested_schema():
 
     schema = OuterSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
     assert 'recursive' not in inner_props
 
@@ -253,7 +253,7 @@ def test_function():
 
     schema = FnSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     props = dumped['definitions']['FnSchema']['properties']
     assert props['fn_int']['type'] == 'number'
     assert props['fn_str']['type'] == 'string'
@@ -268,7 +268,7 @@ def test_nested_recursive():
 
     schema = RecursiveSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['RecursiveSchema']['properties']
     assert 'RecursiveSchema' in props['children']['items']['$ref']
@@ -277,7 +277,7 @@ def test_nested_recursive():
 def test_one_of_validator():
     schema = UserSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     assert (
         dumped['definitions']['UserSchema']['properties']['sex']['enum'] == [
@@ -296,7 +296,7 @@ def test_one_of_validator():
 def test_range_validator():
     schema = Address()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['Address']['properties']
     assert props['floor']['minimum'] == 1
@@ -305,7 +305,7 @@ def test_range_validator():
 def test_length_validator():
     schema = UserSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     props = dumped['definitions']['UserSchema']['properties']
     assert props['name']['minLength'] == 1
@@ -364,8 +364,8 @@ def test_handle_range_no_minimum():
     schema1 = SchemaMin()
     schema2 = SchemaNoMin()
     json_schema = JSONSchema()
-    dumped1 = dot_data_backwards_compatable(json_schema.dump(schema1))['definitions']['SchemaMin']
-    dumped2 = dot_data_backwards_compatable(json_schema.dump(schema2))['definitions']['SchemaNoMin']
+    dumped1 = dot_data_backwards_compatible(json_schema.dump(schema1))['definitions']['SchemaMin']
+    dumped2 = dot_data_backwards_compatible(json_schema.dump(schema2))['definitions']['SchemaNoMin']
     dumped1['properties']['floor']['minimum'] == 1
     'exclusiveMinimum' not in dumped1['properties']['floor'].keys()
     'minimum' not in dumped2['properties']['floor']
@@ -378,7 +378,7 @@ def test_title():
         yourfield = fields.Integer(required=True)
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     _validate_schema(dumped)
     assert dumped['definitions']['TestSchema']['properties']['myfield'][
         'title'
@@ -396,7 +396,7 @@ def test_unknown_typed_field_throws_valueerror():
     schema = UserSchema()
     json_schema = JSONSchema()
     with pytest.raises(ValueError):
-        dot_data_backwards_compatable(json_schema.dump(schema))
+        dot_data_backwards_compatible(json_schema.dump(schema))
 
 def test_unknown_typed_field():
 
@@ -420,7 +420,7 @@ def test_unknown_typed_field():
 
     schema = UserSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     assert dumped['definitions']['UserSchema']['properties'][
         'favourite_colour'
     ] == {'type': 'string'}
@@ -433,7 +433,7 @@ def test_readonly():
 
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     assert dumped['definitions']['TestSchema']['properties'][
         'readonly_fld'
     ] == {
@@ -450,7 +450,7 @@ def test_metadata_direct_from_field():
 
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     assert dumped['definitions']['TestSchema']['properties'][
         'metadata_field'
     ] == {
@@ -468,7 +468,7 @@ def test_dumps_iterable_enums():
 
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
 
     assert dumped['definitions']['TestSchema']['properties']['foo'] == {
         'enum': [v for v in mapping.values()],
@@ -484,5 +484,5 @@ def test_required_excluded_when_empty():
         optional_value = fields.String()
     schema = TestSchema()
     json_schema = JSONSchema()
-    dumped = dot_data_backwards_compatable(json_schema.dump(schema))
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
     assert 'required' not in dumped['definitions']['TestSchema']

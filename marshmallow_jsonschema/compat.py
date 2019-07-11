@@ -15,11 +15,11 @@ else:
 
 if marshmallow.__version__.split('.', 1)[0] >= '3':
     marshmallow_2 = False
-    def dot_data_backwards_compatable(json_schema):
+    def dot_data_backwards_compatible(json_schema):
         return json_schema
 else:
     marshmallow_2 = True
-    def dot_data_backwards_compatable(json_schema):
+    def dot_data_backwards_compatible(json_schema):
         return json_schema.data
 
 
@@ -28,5 +28,5 @@ __all__ = (
     'binary_type',
     'basestring',
     'marshmallow_2',
-    'dot_data_backwards_compatable',
+    'dot_data_backwards_compatible',
 )
