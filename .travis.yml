@@ -2,20 +2,39 @@
 
 dist: xenial
 language: python
-sudo: false
-python:
-  - "3.7"
-  - "3.6"
-  - "3.5"
-  - "3.4"
-  - "2.7"
-  - "pypy"
-
+cache: pip
+matrix:
+  include:
+  # Separate testing for different marshmallow versions in different jobs to ease debugging
+  - os: linux
+    python: "3.7"
+    env: TOXENV=py37-marshmallow2
+  - os: linux
+    python: "3.7"
+    env: TOXENV=py37-marshmallow3
+  # These will test for both versions of marshmallow thanks to tox-travis package
+  - os: linux
+    python: "3.6"
+  - os: linux
+    python: "3.5"
+  - os: linux
+    python: "3.4"
+  - os: linux
+    python: "2.7"
+    env: TOXENV=py27-marshmallow2
+  - os: linux
+    python: "2.7"
+    env: TOXENV=py27-marshmallow3
+  - os: linux
+    python: "pypy3"
+  - os: linux
+    python: "pypy"
 before_install:
   - pip install -U pip
 
-install:
-  - make installcheck
 
-script: coverage run --source marshmallow_jsonschema -m py.test
+install:
+  - pip install -r requirements-tox.txt
+  - pip install tox-travis coveralls
+script: make tox
 after_success: coveralls
