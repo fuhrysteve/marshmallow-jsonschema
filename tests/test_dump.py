@@ -415,9 +415,9 @@ def test_handle_range_not_number_returns_same_instance():
     json_schema = JSONSchema()
 
     # Delete "$ref" as root object names will obviously differ for schemas with different names
-    dumped_1 = json_schema.dump(schema1).data
+    dumped_1 = dot_data_backwards_compatible(json_schema.dump(schema1))
     del dumped_1["$ref"]
-    dumped_2 = json_schema.dump(schema2).data
+    dumped_2 = dot_data_backwards_compatible(json_schema.dump(schema2))
     del dumped_2["$ref"]
 
     assert dumped_1 == dumped_2
