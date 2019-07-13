@@ -1,2 +1,2 @@
-include README.md requirements.txt requirements-test.txt
+include README.md requirements.txt requirements-test.txt requirements-tox.txt
 include LICENSE

@@ -24,6 +24,9 @@ REQUIREMENTS = open(os.path.join(PROJECT_DIR, REQUIREMENTS_FILE)).readlines()
 REQUIREMENTS_TESTS_FILE = "requirements-test.txt"
 REQUIREMENTS_TESTS = open(os.path.join(PROJECT_DIR, REQUIREMENTS_TESTS_FILE)).readlines()
 
+REQUIREMENTS_TOX_FILE = "requirements-tox.txt"
+REQUIREMENTS_TOX = open(os.path.join(PROJECT_DIR, REQUIREMENTS_TOX_FILE)).readlines()
+
 
 setup(
     name='marshmallow-jsonschema',
@@ -38,7 +41,7 @@ setup(
     package_dir={'marshmallow-jsonschema': 'marshmallow-jsonschema'},
     include_package_data=True,
     install_requires=REQUIREMENTS,
-    tests_require=REQUIREMENTS_TESTS,
+    tests_require=REQUIREMENTS_TESTS + REQUIREMENTS_TOX,
     license=read('LICENSE'),
     zip_safe=False,
     keywords=('marshmallow-jsonschema marshmallow schema serialization '
