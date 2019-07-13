@@ -1,4 +1,9 @@
+import os
+
 from setuptools import setup, find_packages
+
+
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def read(fname):
@@ -12,6 +17,14 @@ try:
 except (IOError, ImportError, OSError):
     long_description = read('README.md')
 
+
+REQUIREMENTS_FILE = "requirements.txt"
+REQUIREMENTS = open(os.path.join(PROJECT_DIR, REQUIREMENTS_FILE)).readlines()
+
+REQUIREMENTS_TESTS_FILE = "requirements-test.txt"
+REQUIREMENTS_TESTS = open(os.path.join(PROJECT_DIR, REQUIREMENTS_TESTS_FILE)).readlines()
+
+
 setup(
     name='marshmallow-jsonschema',
     version='0.6.0',
@@ -24,13 +37,8 @@ setup(
     packages=find_packages(exclude=("test*", )),
     package_dir={'marshmallow-jsonschema': 'marshmallow-jsonschema'},
     include_package_data=True,
-    install_requires=['marshmallow>=2.9.0'],
-    tests_require=[
-        'coverage>=4.5.3',
-        'jsonschema>=2.6.0',
-        'pytest>=4.6.3',
-        'strict-rfc3339',
-    ],
+    install_requires=REQUIREMENTS,
+    tests_require=REQUIREMENTS_TESTS,
     license=read('LICENSE'),
     zip_safe=False,
     keywords=('marshmallow-jsonschema marshmallow schema serialization '
