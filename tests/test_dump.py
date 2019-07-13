@@ -89,48 +89,48 @@ def test_descriptions():
 
 
 def test_nested_descriptions():
-    class TestSchema(Schema):
+    class TestNestedSchema(Schema):
         myfield = fields.String(metadata={'description': 'Brown Cow'})
         yourfield = fields.Integer(required=True)
 
-    class TestNestedSchema(Schema):
+    class TestSchema(Schema):
         nested = fields.Nested(
-            TestSchema, metadata={'description': 'Nested 1', 'title': 'Title1'})
+            TestNestedSchema, metadata={'description': 'Nested 1', 'title': 'Title1'})
         yourfield_nested = fields.Integer(required=True)
 
-    schema = TestNestedSchema()
+    schema = TestSchema()
     json_schema = JSONSchema()
 
     dumped = dot_data_backwards_compatible(json_schema.dump(schema))
 
     _validate_schema(dumped)
 
-    nested_def = dumped['definitions']['TestSchema']
-    nested_dmp = dumped['definitions']['TestNestedSchema']['properties']['nested']
+    nested_def = dumped['definitions']['TestNestedSchema']
+    nested_dmp = dumped['definitions']['TestSchema']['properties']['nested']
     assert nested_def['properties']['myfield']['description'] == 'Brown Cow'
 
-    assert nested_dmp['$ref'] == '#/definitions/TestSchema'
+    assert nested_dmp['$ref'] == '#/definitions/TestNestedSchema'
     assert nested_dmp['description'] == 'Nested 1'
     assert nested_dmp['title'] == 'Title1'
 
 
 def test_nested_string_to_cls():
-    class TestSchema999(Schema):
+    class TestNamedNestedSchema(Schema):
         foo = fields.Integer(required=True)
 
-    class TestNestedSchema(Schema):
+    class TestSchema(Schema):
         foo2 = fields.Integer(required=True)
-        nested = fields.Nested('TestSchema999')
+        nested = fields.Nested('TestNamedNestedSchema')
 
-    schema = TestNestedSchema()
+    schema = TestSchema()
     json_schema = JSONSchema()
 
     dumped = dot_data_backwards_compatible(json_schema.dump(schema))
 
     _validate_schema(dumped)
 
-    nested_def = dumped['definitions']['TestSchema999']
-    nested_dmp = dumped['definitions']['TestNestedSchema']['properties']['nested']
+    nested_def = dumped['definitions']['TestNamedNestedSchema']
+    nested_dmp = dumped['definitions']['TestSchema']['properties']['nested']
     assert nested_dmp['type'] == 'object'
     assert nested_def['properties']['foo']['format'] == 'integer'
 
@@ -274,6 +274,28 @@ def test_respect_dotted_exclude_for_nested_schema():
 
     inner_props = dumped['definitions']['InnerRecursiveSchema']['properties']
     assert 'recursive' not in inner_props
+
+
+def test_nested_instance():
+    """Should also work with nested schema instances"""
+    class TestNestedSchema(Schema):
+        baz = fields.Integer()
+
+    class TestSchema(Schema):
+        foo = fields.String()
+        bar = fields.Nested(TestNestedSchema())
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
+
+    _validate_schema(dumped)
+    nested_def = dumped['definitions']['TestNestedSchema']
+    nested_obj = dumped['definitions']['TestSchema']['properties']['bar']
+
+    assert "baz" in nested_def["properties"]
+    assert nested_obj['$ref'] == '#/definitions/TestNestedSchema'
 
 
 def test_function():

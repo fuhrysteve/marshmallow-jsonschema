@@ -1,6 +1,7 @@
 import datetime
 import decimal
 import uuid
+from inspect import isclass
 
 from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
@@ -187,18 +188,21 @@ class JSONSchema(Schema):
         else:
             nested = field.nested
 
-        name = nested.__name__
-        outer_name = obj.__class__.__name__
-        only = field.only
-        exclude = field.exclude
+        if isclass(nested) and issubclass(nested, Schema):
+            name = nested.__name__
+            only = field.only
+            exclude = field.exclude
+            nested_instance = nested(only=only, exclude=exclude)
+        else:
+            name = nested.__class__.__name__
+            nested_instance = nested
 
-        # If this is not a schema we've seen, and it's not this schema,
+        outer_name = obj.__class__.__name__
+        # If this is not a schema we've seen, and it's not this schema (checking this for recursive schemas),
         # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
             wrapped_nested = self.__class__(nested=True)
-            wrapped_dumped = wrapped_nested.dump(
-                nested(only=only, exclude=exclude)
-            )
+            wrapped_dumped = wrapped_nested.dump(nested_instance)
 
             # Handle change in return value type between Marshmallow
             # versions 2 and 3.
