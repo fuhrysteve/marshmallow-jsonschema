@@ -1,19 +1,48 @@
+PROJECT = marshmallow_jsonschema
+
+PYTHON_VERSION ?= 3.7
+VIRTUAL_ENV ?= .venv
+PYTHON ?= $(VIRTUAL_ENV)/bin/python
+
+
+REQUIREMENTS = requirements.txt
+REQUIREMENTS_TEST = requirements-test.txt
+REQUIREMENTS_TOX = requirements-tox.txt
+
 SHELL := /bin/bash -euo pipefail
 
-installcheck:
-	pip install -U .[reco]
-	pip install pytest>=4.6.3 strict-rfc3339 jsonschema coveralls coverage>=4.5.3
+venv_init:
+	pip install virtualenv
+	if [ ! -d $(VIRTUAL_ENV) ]; then \
+		virtualenv -p python$(PYTHON_VERSION) --prompt="($(PROJECT))" $(VIRTUAL_ENV); \
+	fi
 
-check:
-	py.test -v
+venv:  venv_init
+	$(VIRTUAL_ENV)/bin/pip install -r $(REQUIREMENTS)
+	$(VIRTUAL_ENV)/bin/pip install -r $(REQUIREMENTS_TEST)
+	$(VIRTUAL_ENV)/bin/pip install -r $(REQUIREMENTS_TOX)
 
-coverage:
-	coverage erase
-	coverage run --source marshmallow_jsonschema -m py.test -v
-	coverage report -m
+tox:
+	tox
+
+test:
+	pytest
+
+test_coverage:
+	pytest --cov-report html --cov-config .coveragerc --cov $(PROJECT)
+
 
 pypitest:
 	python setup.py sdist upload -r pypitest
 
 pypi:
 	python setup.py sdist upload -r pypi
+
+
+clean_venv:
+	rm -rf $(VIRTUAL_ENV)
+
+clean_pyc:
+	find . -name \*.pyc -delete
+
+clean: clean_venv clean_pyc

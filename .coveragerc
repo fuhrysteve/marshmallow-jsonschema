@@ -1,0 +1,16 @@
+[run]
+branch = True
+omit =
+    tests/*
+    */tests/*
+
+[report]
+skip_covered = True
+fail_under=95
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+
+[html]
+directory = .reports/coverage

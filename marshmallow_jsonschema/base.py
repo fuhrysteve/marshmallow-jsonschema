@@ -241,8 +241,8 @@ class JSONSchema(Schema):
         self.obj = obj
         return super(JSONSchema, self).dump(obj, **kwargs)
 
-    @post_dump(pass_many=False)
-    def wrap(self, data):
+    @post_dump
+    def wrap(self, data, **_):
         """Wrap this with the root schema definitions."""
         if self.nested:  # no need to wrap, will be in outer defs
             return data
