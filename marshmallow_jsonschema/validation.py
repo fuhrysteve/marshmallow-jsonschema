@@ -25,14 +25,16 @@ def handle_length(schema, field, validator, parent_schema):
             `fields.List`, `fields.Nested`, or `fields.String`
     """
     if isinstance(field, fields.String):
-        minKey = 'minLength'
-        maxKey = 'maxLength'
+        minKey = "minLength"
+        maxKey = "maxLength"
     elif isinstance(field, (fields.List, fields.Nested)):
-        minKey = 'minItems'
-        maxKey = 'maxItems'
+        minKey = "minItems"
+        maxKey = "maxItems"
     else:
-        raise ValueError("In order to set the Length validator for JSON "
-                         "schema, the field must be either a List or a String")
+        raise ValueError(
+            "In order to set the Length validator for JSON "
+            "schema, the field must be either a List or a String"
+        )
 
     if validator.min:
         schema[minKey] = validator.min
@@ -66,8 +68,8 @@ def handle_one_of(schema, field, validator, parent_schema):
             altered.
     """
     if validator.choices:
-        schema['enum'] = list(validator.choices)
-        schema['enumNames'] = list(validator.labels)
+        schema["enum"] = list(validator.choices)
+        schema["enumNames"] = list(validator.labels)
 
     return schema
 
@@ -94,9 +96,9 @@ def handle_range(schema, field, validator, parent_schema):
         return schema
 
     if validator.min:
-        schema['minimum'] = validator.min
+        schema["minimum"] = validator.min
 
     if validator.max:
-        schema['maximum'] = validator.max
+        schema["maximum"] = validator.max
 
     return schema
