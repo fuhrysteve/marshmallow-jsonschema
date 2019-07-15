@@ -10,65 +10,28 @@ from marshmallow.decorators import post_dump
 from .compat import text_type, binary_type, basestring, dot_data_backwards_compatible
 from .validation import handle_length, handle_one_of, handle_range
 
-__all__ = (
-    'JSONSchema',
-)
+__all__ = ("JSONSchema",)
 
 
 TYPE_MAP = {
-    dict: {
-        'type': 'object',
-    },
-    list: {
-        'type': 'array',
-    },
-    datetime.time: {
-        'type': 'string',
-        'format': 'time',
-    },
+    dict: {"type": "object"},
+    list: {"type": "array"},
+    datetime.time: {"type": "string", "format": "time"},
     datetime.timedelta: {
         # TODO explore using 'range'?
-        'type': 'string',
+        "type": "string"
     },
-    datetime.datetime: {
-        'type': 'string',
-        'format': 'date-time',
-    },
-    datetime.date: {
-        'type': 'string',
-        'format': 'date',
-    },
-    uuid.UUID: {
-        'type': 'string',
-        'format': 'uuid',
-    },
-    text_type: {
-        'type': 'string',
-    },
-    binary_type: {
-        'type': 'string',
-    },
-    decimal.Decimal: {
-        'type': 'number',
-        'format': 'decimal',
-    },
-    set: {
-        'type': 'array',
-    },
-    tuple: {
-        'type': 'array',
-    },
-    float: {
-        'type': 'number',
-        'format': 'float',
-    },
-    int: {
-        'type': 'number',
-        'format': 'integer',
-    },
-    bool: {
-        'type': 'boolean',
-    },
+    datetime.datetime: {"type": "string", "format": "date-time"},
+    datetime.date: {"type": "string", "format": "date"},
+    uuid.UUID: {"type": "string", "format": "uuid"},
+    text_type: {"type": "string"},
+    binary_type: {"type": "string"},
+    decimal.Decimal: {"type": "number", "format": "decimal"},
+    set: {"type": "array"},
+    tuple: {"type": "array"},
+    float: {"type": "number", "format": "float"},
+    int: {"type": "number", "format": "integer"},
+    bool: {"type": "boolean"},
 }
 
 
@@ -82,27 +45,29 @@ FIELD_VALIDATORS = {
 class JSONSchema(Schema):
     """Converts to JSONSchema as defined by http://json-schema.org/."""
 
-    properties = fields.Method('get_properties')
-    type = fields.Constant('object')
-    required = fields.Method('get_required')
+    properties = fields.Method("get_properties")
+    type = fields.Constant("object")
+    required = fields.Method("get_required")
 
     def __init__(self, *args, **kwargs):
         """Setup internal cache of nested fields, to prevent recursion."""
         self._nested_schema_classes = {}
-        self.nested = kwargs.pop('nested', False)
+        self.nested = kwargs.pop("nested", False)
         super(JSONSchema, self).__init__(*args, **kwargs)
 
     def _get_default_mapping(self, obj):
         """Return default mapping if there are no special needs."""
         mapping = {v: k for k, v in obj.TYPE_MAPPING.items()}
-        mapping.update({
-            fields.Email: text_type,
-            fields.Dict: dict,
-            fields.Url: text_type,
-            fields.List: list,
-            fields.LocalDateTime: datetime.datetime,
-            fields.Nested: '_from_nested_schema',
-        })
+        mapping.update(
+            {
+                fields.Email: text_type,
+                fields.Dict: dict,
+                fields.Url: text_type,
+                fields.List: list,
+                fields.LocalDateTime: datetime.datetime,
+                fields.Nested: "_from_nested_schema",
+            }
+        )
         return mapping
 
     def get_properties(self, obj):
@@ -127,51 +92,45 @@ class JSONSchema(Schema):
 
     def _from_python_type(self, obj, field, pytype):
         """Get schema definition from python type."""
-        json_schema = {
-            'title': field.attribute or field.name,
-        }
+        json_schema = {"title": field.attribute or field.name}
 
         for key, val in TYPE_MAP[pytype].items():
             json_schema[key] = val
 
         if field.dump_only:
-            json_schema['readonly'] = True
+            json_schema["readonly"] = True
 
         if field.default is not missing:
-            json_schema['default'] = field.default
+            json_schema["default"] = field.default
 
         # NOTE: doubled up to maintain backwards compatibility
-        metadata = field.metadata.get('metadata', {})
+        metadata = field.metadata.get("metadata", {})
         metadata.update(field.metadata)
 
         for md_key, md_val in metadata.items():
-            if md_key == 'metadata':
+            if md_key == "metadata":
                 continue
             json_schema[md_key] = md_val
 
         if isinstance(field, fields.List):
-            json_schema['items'] = self._get_schema_for_field(
-                obj, field.container
-            )
+            json_schema["items"] = self._get_schema_for_field(obj, field.container)
         return json_schema
 
     def _get_schema_for_field(self, obj, field):
         """Get schema and validators for field."""
         mapping = self._get_default_mapping(obj)
-        if hasattr(field, '_jsonschema_type_mapping'):
+        if hasattr(field, "_jsonschema_type_mapping"):
             schema = field._jsonschema_type_mapping()
-        elif '_jsonschema_type_mapping' in field.metadata:
-            schema = field.metadata['_jsonschema_type_mapping']
+        elif "_jsonschema_type_mapping" in field.metadata:
+            schema = field.metadata["_jsonschema_type_mapping"]
         elif field.__class__ in mapping:
             pytype = mapping[field.__class__]
             if isinstance(pytype, basestring):
                 schema = getattr(self, pytype)(obj, field)
             else:
-                schema = self._from_python_type(
-                    obj, field, pytype
-                )
+                schema = self._from_python_type(obj, field, pytype)
         else:
-            raise ValueError('unsupported field type %s' % field)
+            raise ValueError("unsupported field type %s" % field)
 
         # Apply any and all validators that field may have
         for validator in field.validators:
@@ -207,31 +166,27 @@ class JSONSchema(Schema):
             # Handle change in return value type between Marshmallow
             # versions 2 and 3.
             self._nested_schema_classes[name] = dot_data_backwards_compatible(
-                wrapped_dumped)
-
-            self._nested_schema_classes.update(
-                wrapped_nested._nested_schema_classes
+                wrapped_dumped
             )
 
+            self._nested_schema_classes.update(wrapped_nested._nested_schema_classes)
+
         # and the schema is just a reference to the def
-        schema = {
-            'type': 'object',
-            '$ref': '#/definitions/{}'.format(name)
-        }
+        schema = {"type": "object", "$ref": "#/definitions/{}".format(name)}
 
         # NOTE: doubled up to maintain backwards compatibility
-        metadata = field.metadata.get('metadata', {})
+        metadata = field.metadata.get("metadata", {})
         metadata.update(field.metadata)
 
         for md_key, md_val in metadata.items():
-            if md_key == 'metadata':
+            if md_key == "metadata":
                 continue
             schema[md_key] = md_val
 
         if field.many:
             schema = {
-                'type': "array" if field.required else ['array', 'null'],
-                'items': schema,
+                "type": "array" if field.required else ["array", "null"],
+                "items": schema,
             }
 
         return schema
@@ -250,7 +205,7 @@ class JSONSchema(Schema):
         name = self.obj.__class__.__name__
         self._nested_schema_classes[name] = data
         root = {
-            'definitions': self._nested_schema_classes,
-            '$ref': '#/definitions/{name}'.format(name=name)
+            "definitions": self._nested_schema_classes,
+            "$ref": "#/definitions/{name}".format(name=name),
         }
         return root

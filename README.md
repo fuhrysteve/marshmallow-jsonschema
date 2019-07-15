@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/fuhrysteve/marshmallow-jsonschema.svg?branch=master)](https://travis-ci.org/fuhrysteve/marshmallow-jsonschema)
 [![Coverage Status](https://coveralls.io/repos/github/fuhrysteve/marshmallow-jsonschema/badge.svg?branch=master)](https://coveralls.io/github/fuhrysteve/marshmallow-jsonschema?branch=master)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 
  marshmallow-jsonschema translates marshmallow schemas into
  JSON Schema Draft v4 compliant jsonschema. See http://json-schema.org/

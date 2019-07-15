@@ -10,15 +10,15 @@ class UserSchema(Schema):
     address = fields.String()
 
 
-@app.route('/schema')
+@app.route("/schema")
 def schema():
     schema = UserSchema()
     return jsonify(JSONSchema().dump(schema).data)
 
 
-@app.route('/')
+@app.route("/")
 def home():
-    return '''<!DOCTYPE html>
+    return """<!DOCTYPE html>
 <head>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/brutusin.json-forms/1.3.0/css/brutusin-json-forms.css"><Paste>
 <script src="https://code.jquery.com/jquery-1.12.1.min.js" integrity="sha256-I1nTg78tSrZev3kjvfdM5A5Ak/blglGzlaZANLPDl3I=" crossorigin="anonymous"></script>
@@ -42,7 +42,8 @@ $(document).ready(function() {
 <div id="myform"></div>
 </body>
 </html>
-'''
+"""
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", debug=True)
