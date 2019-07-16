@@ -7,10 +7,27 @@ from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.decorators import post_dump
 
-from .compat import text_type, binary_type, basestring, dot_data_backwards_compatible
+from .compat import (
+    text_type,
+    binary_type,
+    basestring,
+    dot_data_backwards_compatible,
+    list_inner,
+)
 from .validation import handle_length, handle_one_of, handle_range
 
-__all__ = ("JSONSchema",)
+try:
+    from marshmallow import RAISE, INCLUDE, EXCLUDE
+except ImportError:
+    RAISE = "raise"
+    INCLUDE = "include"
+    EXCLUDE = "exclude"
+
+__all__ = ("JSONSchema", "UnsupportedValueError")
+
+
+class UnsupportedValueError(Exception):
+    pass
 
 
 TYPE_MAP = {
@@ -40,6 +57,29 @@ FIELD_VALIDATORS = {
     validate.OneOf: handle_one_of,
     validate.Range: handle_range,
 }
+
+
+def _resolve_additional_properties(cls):
+    meta = cls.Meta
+
+    additional_properties = getattr(meta, "additional_properties", None)
+    if additional_properties is not None:
+        if additional_properties in (True, False):
+            return additional_properties
+        else:
+            raise UnsupportedValueError(
+                "`additional_properties` must be either True or False"
+            )
+
+    unknown = getattr(meta, "unknown", None)
+    if unknown is None:
+        return False
+    elif unknown in (RAISE, EXCLUDE):
+        return False
+    elif unknown == INCLUDE:
+        return True
+    else:
+        raise UnsupportedValueError("Unknown value %s for `unknown`" % unknown)
 
 
 class JSONSchema(Schema):
@@ -113,7 +153,7 @@ class JSONSchema(Schema):
             json_schema[md_key] = md_val
 
         if isinstance(field, fields.List):
-            json_schema["items"] = self._get_schema_for_field(obj, field.container)
+            json_schema["items"] = self._get_schema_for_field(obj, list_inner(field))
         return json_schema
 
     def _get_schema_for_field(self, obj, field):
@@ -130,7 +170,7 @@ class JSONSchema(Schema):
             else:
                 schema = self._from_python_type(obj, field, pytype)
         else:
-            raise ValueError("unsupported field type %s" % field)
+            raise UnsupportedValueError("unsupported field type %s" % field)
 
         # Apply any and all validators that field may have
         for validator in field.validators:
@@ -151,9 +191,11 @@ class JSONSchema(Schema):
             name = nested.__name__
             only = field.only
             exclude = field.exclude
+            nested_cls = nested
             nested_instance = nested(only=only, exclude=exclude)
         else:
-            name = nested.__class__.__name__
+            nested_cls = nested.__class__
+            name = nested_cls.__name__
             nested_instance = nested
 
         outer_name = obj.__class__.__name__
@@ -161,13 +203,15 @@ class JSONSchema(Schema):
         # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
             wrapped_nested = self.__class__(nested=True)
-            wrapped_dumped = wrapped_nested.dump(nested_instance)
-
-            # Handle change in return value type between Marshmallow
-            # versions 2 and 3.
-            self._nested_schema_classes[name] = dot_data_backwards_compatible(
-                wrapped_dumped
+            wrapped_dumped = dot_data_backwards_compatible(
+                wrapped_nested.dump(nested_instance)
             )
+
+            additional_properties = _resolve_additional_properties(nested_cls)
+            if additional_properties is not None:
+                wrapped_dumped["additionalProperties"] = additional_properties
+
+            self._nested_schema_classes[name] = wrapped_dumped
 
             self._nested_schema_classes.update(wrapped_nested._nested_schema_classes)
 
@@ -202,7 +246,13 @@ class JSONSchema(Schema):
         if self.nested:  # no need to wrap, will be in outer defs
             return data
 
-        name = self.obj.__class__.__name__
+        cls = self.obj.__class__
+        name = cls.__name__
+
+        additional_properties = _resolve_additional_properties(cls)
+        if additional_properties is not None:
+            data["additionalProperties"] = additional_properties
+
         self._nested_schema_classes[name] = data
         root = {
             "definitions": self._nested_schema_classes,

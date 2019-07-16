@@ -1,5 +1,3 @@
-import unittest
-
 from marshmallow import Schema, fields, validate
 
 

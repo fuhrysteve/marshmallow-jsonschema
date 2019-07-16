@@ -1,9 +1,13 @@
-from marshmallow import Schema, fields, validate
-from marshmallow_jsonschema import JSONSchema
-from marshmallow_jsonschema.compat import dot_data_backwards_compatible
-from jsonschema import Draft4Validator
 import pytest
+from jsonschema import Draft4Validator
+from marshmallow import Schema, fields, validate
 
+from marshmallow_jsonschema import JSONSchema
+from marshmallow_jsonschema.base import UnsupportedValueError, INCLUDE, EXCLUDE, RAISE
+from marshmallow_jsonschema.compat import (
+    dot_data_backwards_compatible,
+    MARSHMALLOW_MAJOR_VERSION,
+)
 from . import UserSchema, Address
 
 
@@ -508,7 +512,7 @@ def test_unknown_typed_field_throws_valueerror():
     schema = UserSchema()
     json_schema = JSONSchema()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(UnsupportedValueError):
         dot_data_backwards_compatible(json_schema.dump(schema))
 
 
@@ -606,3 +610,121 @@ def test_required_excluded_when_empty():
     dumped = dot_data_backwards_compatible(json_schema.dump(schema))
 
     assert "required" not in dumped["definitions"]["TestSchema"]
+
+
+def test_additional_properties_default():
+    class TestSchema(Schema):
+        foo = fields.Integer()
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
+
+    assert not dumped["definitions"]["TestSchema"]["additionalProperties"]
+
+
+@pytest.mark.parametrize("additional_properties_value", (False, True))
+def test_additional_properties_from_meta(additional_properties_value):
+    class TestSchema(Schema):
+        class Meta:
+            additional_properties = additional_properties_value
+
+        foo = fields.Integer()
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
+
+    assert (
+        dumped["definitions"]["TestSchema"]["additionalProperties"]
+        == additional_properties_value
+    )
+
+
+def test_additional_properties_invalid_value():
+    class TestSchema(Schema):
+        class Meta:
+            additional_properties = "foo"
+
+        foo = fields.Integer()
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+
+    with pytest.raises(UnsupportedValueError):
+        json_schema.dump(schema)
+
+
+def test_additional_properties_nested_default():
+    class TestNestedSchema(Schema):
+        foo = fields.Integer()
+
+    class TestSchema(Schema):
+        nested = fields.Nested(TestNestedSchema())
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
+
+    assert not dumped["definitions"]["TestSchema"]["additionalProperties"]
+
+
+@pytest.mark.parametrize("additional_properties_value", (False, True))
+def test_additional_properties_from_nested_meta(additional_properties_value):
+    class TestNestedSchema(Schema):
+        class Meta:
+            additional_properties = additional_properties_value
+
+        foo = fields.Integer()
+
+    class TestSchema(Schema):
+        nested = fields.Nested(TestNestedSchema())
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
+
+    assert (
+        dumped["definitions"]["TestNestedSchema"]["additionalProperties"]
+        == additional_properties_value
+    )
+
+
+@pytest.mark.parametrize(
+    "unknown_value, additional_properties",
+    ((RAISE, False), (INCLUDE, True), (EXCLUDE, False)),
+)
+def test_additional_properties_deduced(unknown_value, additional_properties):
+    class TestSchema(Schema):
+        class Meta:
+            unknown = unknown_value
+
+        foo = fields.Integer()
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+
+    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
+
+    assert (
+        dumped["definitions"]["TestSchema"]["additionalProperties"]
+        == additional_properties
+    )
+
+
+def test_additional_properties_unknown_invalid_value():
+    class TestSchema(Schema):
+        class Meta:
+            unknown = "foo"
+
+        foo = fields.Integer()
+
+    schema = TestSchema()
+    json_schema = JSONSchema()
+
+    with pytest.raises(UnsupportedValueError):
+        json_schema.dump(schema)
