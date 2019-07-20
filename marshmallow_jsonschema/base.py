@@ -13,22 +13,14 @@ from .compat import (
     basestring,
     dot_data_backwards_compatible,
     list_inner,
+    INCLUDE,
+    EXCLUDE,
+    RAISE,
 )
+from .exceptions import UnsupportedValueError
 from .validation import handle_length, handle_one_of, handle_range
 
-try:
-    from marshmallow import RAISE, INCLUDE, EXCLUDE
-except ImportError:
-    RAISE = "raise"
-    INCLUDE = "include"
-    EXCLUDE = "exclude"
-
-__all__ = ("JSONSchema", "UnsupportedValueError")
-
-
-class UnsupportedValueError(Exception):
-    pass
-
+__all__ = ("JSONSchema",)
 
 TYPE_MAP = {
     dict: {"type": "object"},

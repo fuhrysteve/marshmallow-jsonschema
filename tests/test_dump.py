@@ -1,8 +1,7 @@
 import pytest
 from marshmallow import Schema, fields, validate
 
-from marshmallow_jsonschema import JSONSchema
-from marshmallow_jsonschema.base import UnsupportedValueError
+from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
 from . import UserSchema, validate_and_dump
 
 
