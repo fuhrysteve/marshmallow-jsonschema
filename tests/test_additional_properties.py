@@ -8,7 +8,7 @@ from marshmallow_jsonschema.base import (
     INCLUDE,
     EXCLUDE,
 )
-from marshmallow_jsonschema.compat import dot_data_backwards_compatible
+from . import validate_and_dump
 
 
 def test_additional_properties_default():
@@ -16,9 +16,8 @@ def test_additional_properties_default():
         foo = fields.Integer()
 
     schema = TestSchema()
-    json_schema = JSONSchema()
 
-    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
+    dumped = validate_and_dump(schema)
 
     assert not dumped["definitions"]["TestSchema"]["additionalProperties"]
 
@@ -32,9 +31,8 @@ def test_additional_properties_from_meta(additional_properties_value):
         foo = fields.Integer()
 
     schema = TestSchema()
-    json_schema = JSONSchema()
 
-    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
+    dumped = validate_and_dump(schema)
 
     assert (
         dumped["definitions"]["TestSchema"]["additionalProperties"]
@@ -64,9 +62,8 @@ def test_additional_properties_nested_default():
         nested = fields.Nested(TestNestedSchema())
 
     schema = TestSchema()
-    json_schema = JSONSchema()
 
-    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
+    dumped = validate_and_dump(schema)
 
     assert not dumped["definitions"]["TestSchema"]["additionalProperties"]
 
@@ -83,9 +80,8 @@ def test_additional_properties_from_nested_meta(additional_properties_value):
         nested = fields.Nested(TestNestedSchema())
 
     schema = TestSchema()
-    json_schema = JSONSchema()
 
-    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
+    dumped = validate_and_dump(schema)
 
     assert (
         dumped["definitions"]["TestNestedSchema"]["additionalProperties"]
@@ -105,9 +101,8 @@ def test_additional_properties_deduced(unknown_value, additional_properties):
         foo = fields.Integer()
 
     schema = TestSchema()
-    json_schema = JSONSchema()
 
-    dumped = dot_data_backwards_compatible(json_schema.dump(schema))
+    dumped = validate_and_dump(schema)
 
     assert (
         dumped["definitions"]["TestSchema"]["additionalProperties"]

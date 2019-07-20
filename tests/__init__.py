@@ -1,6 +1,9 @@
 from jsonschema import Draft4Validator
 from marshmallow import Schema, fields, validate
 
+from marshmallow_jsonschema import JSONSchema
+from marshmallow_jsonschema.compat import dot_data_backwards_compatible
+
 
 class Address(Schema):
     id = fields.String(default="no-id")
@@ -56,3 +59,11 @@ def _validate_schema(schema):
     raises jsonschema.exceptions.SchemaError
     """
     Draft4Validator.check_schema(schema)
+
+
+def validate_and_dump(schema):
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema)
+    data = dot_data_backwards_compatible(dumped)
+    _validate_schema(data)
+    return data
