@@ -1,3 +1,4 @@
+from jsonschema import Draft4Validator
 from marshmallow import Schema, fields, validate
 
 
@@ -48,3 +49,10 @@ class UserSchema(Schema):
     )
     github = fields.Nested(GithubProfile)
     const = fields.String(validate=validate.Length(equal=50))
+
+
+def _validate_schema(schema):
+    """
+    raises jsonschema.exceptions.SchemaError
+    """
+    Draft4Validator.check_schema(schema)
