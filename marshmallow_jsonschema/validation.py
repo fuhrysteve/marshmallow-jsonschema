@@ -1,5 +1,7 @@
 from marshmallow import fields
 
+from .exceptions import UnsupportedValueError
+
 
 def handle_length(schema, field, validator, parent_schema):
     """Adds validation logic for ``marshmallow.validate.Length``, setting the
@@ -21,7 +23,7 @@ def handle_length(schema, field, validator, parent_schema):
             altered.
 
     Raises:
-        ValueError: Raised if the `field` is something other than
+        UnsupportedValueError: Raised if the `field` is something other than
             `fields.List`, `fields.Nested`, or `fields.String`
     """
     if isinstance(field, fields.String):
@@ -31,9 +33,9 @@ def handle_length(schema, field, validator, parent_schema):
         minKey = "minItems"
         maxKey = "maxItems"
     else:
-        raise ValueError(
+        raise UnsupportedValueError(
             "In order to set the Length validator for JSON "
-            "schema, the field must be either a List or a String"
+            "schema, the field must be either a List, Nested or a String"
         )
 
     if validator.min:
