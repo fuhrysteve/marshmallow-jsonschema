@@ -247,6 +247,7 @@ class JSONSchema(Schema):
 
         self._nested_schema_classes[name] = data
         root = {
+            "$schema": "http://json-schema.org/draft-07/schema#",
             "definitions": self._nested_schema_classes,
             "$ref": "#/definitions/{name}".format(name=name),
         }
