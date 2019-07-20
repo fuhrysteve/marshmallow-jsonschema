@@ -5,7 +5,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 
  marshmallow-jsonschema translates marshmallow schemas into
- JSON Schema Draft v4 compliant jsonschema. See http://json-schema.org/
+ JSON Schema Draft v7 compliant jsonschema. See http://json-schema.org/
 
 #### Why would I want my schema translated to JSON?
 
