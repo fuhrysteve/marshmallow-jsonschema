@@ -37,10 +37,6 @@ else:
         return json_schema
 
     def list_inner(list_field):
-        if hasattr(list_field, "container"):
-            # backwards compatibility for marshmallow versions prior to 3.0.0rc8
-            return list_field.container
-
         return list_field.inner
 
 
