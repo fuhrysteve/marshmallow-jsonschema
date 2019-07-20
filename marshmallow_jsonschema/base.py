@@ -199,9 +199,9 @@ class JSONSchema(Schema):
                 wrapped_nested.dump(nested_instance)
             )
 
-            additional_properties = _resolve_additional_properties(nested_cls)
-            if additional_properties is not None:
-                wrapped_dumped["additionalProperties"] = additional_properties
+            wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
+                nested_cls
+            )
 
             self._nested_schema_classes[name] = wrapped_dumped
 
@@ -241,9 +241,7 @@ class JSONSchema(Schema):
         cls = self.obj.__class__
         name = cls.__name__
 
-        additional_properties = _resolve_additional_properties(cls)
-        if additional_properties is not None:
-            data["additionalProperties"] = additional_properties
+        data["additionalProperties"] = _resolve_additional_properties(cls)
 
         self._nested_schema_classes[name] = data
         root = {
