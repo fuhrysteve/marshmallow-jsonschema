@@ -1,5 +1,7 @@
 from marshmallow import fields
 
+from .exceptions import UnsupportedValueError
+
 
 def handle_length(schema, field, validator, parent_schema):
     """Adds validation logic for ``marshmallow.validate.Length``, setting the
@@ -21,7 +23,7 @@ def handle_length(schema, field, validator, parent_schema):
             altered.
 
     Raises:
-        ValueError: Raised if the `field` is something other than
+        UnsupportedValueError: Raised if the `field` is something other than
             `fields.List`, `fields.Nested`, or `fields.String`
     """
     if isinstance(field, fields.String):
@@ -31,9 +33,9 @@ def handle_length(schema, field, validator, parent_schema):
         minKey = "minItems"
         maxKey = "maxItems"
     else:
-        raise ValueError(
+        raise UnsupportedValueError(
             "In order to set the Length validator for JSON "
-            "schema, the field must be either a List or a String"
+            "schema, the field must be either a List, Nested or a String"
         )
 
     if validator.min:
@@ -64,12 +66,11 @@ def handle_one_of(schema, field, validator, parent_schema):
             belongs to.
 
     Returns:
-        dict: A, possibly, new JSON Schema that has been post processed and
+        dict: New JSON Schema that has been post processed and
             altered.
     """
-    if validator.choices:
-        schema["enum"] = list(validator.choices)
-        schema["enumNames"] = list(validator.labels)
+    schema["enum"] = list(validator.choices)
+    schema["enumNames"] = list(validator.labels)
 
     return schema
 
@@ -83,22 +84,39 @@ def handle_range(schema, field, validator, parent_schema):
             want to post-process.
         field (fields.Field): The field that generated the original schema and
             who this post-processor belongs to.
-        validator (marshmallow.validate.Length): The validator attached to the
+        validator (marshmallow.validate.Range): The validator attached to the
             passed in field.
         parent_schema (marshmallow.Schema): The Schema instance that the field
             belongs to.
 
     Returns:
-        dict: A, possibly, new JSON Schema that has been post processed and
+        dict: New JSON Schema that has been post processed and
             altered.
+
+    Raises:
+        UnsupportedValueError: Raised if the `field` is not an instance of
+            `fields.Number`.
     """
     if not isinstance(field, fields.Number):
-        return schema
+        raise UnsupportedValueError(
+            "'Range' validator for non-number fields is not supported"
+        )
 
-    if validator.min:
-        schema["minimum"] = validator.min
+    if validator.min is not None:
+        # marshmallow 2 includes minimum by default
+        # marshmallow 3 supports "min_inclusive"
+        min_inclusive = getattr(validator, "min_inclusive", True)
+        if min_inclusive:
+            schema["minimum"] = validator.min
+        else:
+            schema["exclusiveMinimum"] = validator.min
 
-    if validator.max:
-        schema["maximum"] = validator.max
-
+    if validator.max is not None:
+        # marshmallow 2 includes maximum by default
+        # marshmallow 3 supports "max_inclusive"
+        max_inclusive = getattr(validator, "max_inclusive", True)
+        if max_inclusive:
+            schema["maximum"] = validator.max
+        else:
+            schema["exclusiveMaximum"] = validator.max
     return schema

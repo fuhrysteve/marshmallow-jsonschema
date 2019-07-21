@@ -2,7 +2,11 @@ import sys
 import marshmallow
 
 PY2 = int(sys.version_info[0]) == 2
+
 MARSHMALLOW_MAJOR_VERSION = int(marshmallow.__version__.split(".", 1)[0])
+
+MARSHMALLOW_2 = MARSHMALLOW_MAJOR_VERSION == 2
+MARSHMALLOW_3 = MARSHMALLOW_MAJOR_VERSION == 3
 
 if PY2:
     text_type = unicode
@@ -14,7 +18,10 @@ else:
     basestring = (str, bytes)
 
 
-if MARSHMALLOW_MAJOR_VERSION == 2:
+if MARSHMALLOW_2:
+    RAISE = "raise"
+    INCLUDE = "include"
+    EXCLUDE = "exclude"
 
     def dot_data_backwards_compatible(json_schema):
         return json_schema.data
@@ -24,15 +31,12 @@ if MARSHMALLOW_MAJOR_VERSION == 2:
 
 
 else:
+    from marshmallow import RAISE, INCLUDE, EXCLUDE
 
     def dot_data_backwards_compatible(json_schema):
         return json_schema
 
     def list_inner(list_field):
-        if hasattr(list_field, "container"):
-            # backwards compatibility for marshmallow versions prior to 3.0.0rc8
-            return list_field.container
-
         return list_field.inner
 
 

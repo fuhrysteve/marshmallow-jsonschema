@@ -13,22 +13,14 @@ from .compat import (
     basestring,
     dot_data_backwards_compatible,
     list_inner,
+    INCLUDE,
+    EXCLUDE,
+    RAISE,
 )
+from .exceptions import UnsupportedValueError
 from .validation import handle_length, handle_one_of, handle_range
 
-try:
-    from marshmallow import RAISE, INCLUDE, EXCLUDE
-except ImportError:
-    RAISE = "raise"
-    INCLUDE = "include"
-    EXCLUDE = "exclude"
-
-__all__ = ("JSONSchema", "UnsupportedValueError")
-
-
-class UnsupportedValueError(Exception):
-    pass
-
+__all__ = ("JSONSchema",)
 
 TYPE_MAP = {
     dict: {"type": "object"},
@@ -207,9 +199,9 @@ class JSONSchema(Schema):
                 wrapped_nested.dump(nested_instance)
             )
 
-            additional_properties = _resolve_additional_properties(nested_cls)
-            if additional_properties is not None:
-                wrapped_dumped["additionalProperties"] = additional_properties
+            wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
+                nested_cls
+            )
 
             self._nested_schema_classes[name] = wrapped_dumped
 
@@ -249,12 +241,11 @@ class JSONSchema(Schema):
         cls = self.obj.__class__
         name = cls.__name__
 
-        additional_properties = _resolve_additional_properties(cls)
-        if additional_properties is not None:
-            data["additionalProperties"] = additional_properties
+        data["additionalProperties"] = _resolve_additional_properties(cls)
 
         self._nested_schema_classes[name] = data
         root = {
+            "$schema": "http://json-schema.org/draft-07/schema#",
             "definitions": self._nested_schema_classes,
             "$ref": "#/definitions/{name}".format(name=name),
         }

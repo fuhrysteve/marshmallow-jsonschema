@@ -23,10 +23,6 @@ matrix:
       python: "3.5"
     - os: linux
       python: "2.7"
-      env: TOXENV=py27-marshmallow2
-    - os: linux
-      python: "2.7"
-      env: TOXENV=py27-marshmallow3
     - os: linux
       python: "pypy3"
     - os: linux

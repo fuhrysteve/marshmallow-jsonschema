@@ -1,4 +1,8 @@
+from jsonschema import Draft7Validator
 from marshmallow import Schema, fields, validate
+
+from marshmallow_jsonschema import JSONSchema
+from marshmallow_jsonschema.compat import dot_data_backwards_compatible
 
 
 class Address(Schema):
@@ -48,3 +52,20 @@ class UserSchema(Schema):
     )
     github = fields.Nested(GithubProfile)
     const = fields.String(validate=validate.Length(equal=50))
+
+
+def _validate_schema(schema):
+    """
+    raises jsonschema.exceptions.SchemaError
+    """
+    Draft7Validator.check_schema(schema)
+
+
+def validate_and_dump(schema):
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema)
+    data = dot_data_backwards_compatible(dumped)
+    _validate_schema(data)
+    # ensure last version
+    assert data["$schema"] == "http://json-schema.org/draft-07/schema#"
+    return data
