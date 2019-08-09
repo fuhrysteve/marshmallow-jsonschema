@@ -355,8 +355,7 @@ def test_field_subclass():
     """JSON schema generation should not fail on sublcass marshmallow field."""
 
     class CustomString(fields.String):
-        def __init__(self, *args, **kwargs):
-            super().__init__(**kwargs)
+        pass
 
     class TestSchema(Schema):
         myfield = CustomString()
