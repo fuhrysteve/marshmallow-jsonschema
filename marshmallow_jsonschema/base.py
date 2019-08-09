@@ -168,7 +168,6 @@ class JSONSchema(Schema):
                 schema = getattr(self, pytype)(obj, field)
             else:
                 schema = self._from_python_type(obj, field, pytype)
-            
         # Apply any and all validators that field may have
         for validator in field.validators:
             if validator.__class__ in FIELD_VALIDATORS:
