@@ -148,12 +148,12 @@ class JSONSchema(Schema):
             json_schema["items"] = self._get_schema_for_field(obj, list_inner(field))
         return json_schema
 
-    def _get_pytype(self, field_class, mapping):
+    def _get_pytype(self, field, mapping):
         """Get pytype based on field subclass"""
         for map_class, pytype in mapping.items():
-            if issubclass(field_class, map_class):
+            if issubclass(field.__class__, map_class):
                 return pytype
-        return None
+        raise UnsupportedValueError("unsupported field type %s" % field)
 
     def _get_schema_for_field(self, obj, field):
         """Get schema and validators for field."""
@@ -163,9 +163,7 @@ class JSONSchema(Schema):
         elif "_jsonschema_type_mapping" in field.metadata:
             schema = field.metadata["_jsonschema_type_mapping"]
         else:
-            pytype = self._get_pytype(field.__class__, mapping)
-            if not pytype:
-                raise UnsupportedValueError("unsupported field type %s" % field)
+            pytype = self._get_pytype(field, mapping)
             if isinstance(pytype, basestring):
                 schema = getattr(self, pytype)(obj, field)
             else:
