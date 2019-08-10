@@ -33,6 +33,6 @@ before_install:
 
 install:
   - pip install -r requirements-tox.txt
-  - pip install tox-travis coveralls
+  - pip install -U tox-travis coveralls
 script: make tox
 after_success: coveralls
