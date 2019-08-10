@@ -148,6 +148,13 @@ class JSONSchema(Schema):
             json_schema["items"] = self._get_schema_for_field(obj, list_inner(field))
         return json_schema
 
+    def _get_pytype(self, field, mapping):
+        """Get pytype based on field subclass"""
+        for map_class, pytype in mapping.items():
+            if issubclass(field.__class__, map_class):
+                return pytype
+        raise UnsupportedValueError("unsupported field type %s" % field)
+
     def _get_schema_for_field(self, obj, field):
         """Get schema and validators for field."""
         mapping = self._get_default_mapping(obj)
@@ -155,15 +162,12 @@ class JSONSchema(Schema):
             schema = field._jsonschema_type_mapping()
         elif "_jsonschema_type_mapping" in field.metadata:
             schema = field.metadata["_jsonschema_type_mapping"]
-        elif field.__class__ in mapping:
-            pytype = mapping[field.__class__]
+        else:
+            pytype = self._get_pytype(field, mapping)
             if isinstance(pytype, basestring):
                 schema = getattr(self, pytype)(obj, field)
             else:
                 schema = self._from_python_type(obj, field, pytype)
-        else:
-            raise UnsupportedValueError("unsupported field type %s" % field)
-
         # Apply any and all validators that field may have
         for validator in field.validators:
             if validator.__class__ in FIELD_VALIDATORS:

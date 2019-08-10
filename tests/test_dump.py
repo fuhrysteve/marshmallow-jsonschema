@@ -351,6 +351,20 @@ def test_unknown_typed_field():
     }
 
 
+def test_field_subclass():
+    """JSON schema generation should not fail on sublcass marshmallow field."""
+
+    class CustomField(fields.Field):
+        pass
+
+    class TestSchema(Schema):
+        myfield = CustomField()
+
+    schema = TestSchema()
+    with pytest.raises(UnsupportedValueError):
+        _ = validate_and_dump(schema)
+
+
 def test_readonly():
     class TestSchema(Schema):
         id = fields.Integer(required=True)
