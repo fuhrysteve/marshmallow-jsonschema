@@ -98,6 +98,7 @@ class JSONSchema(Schema):
                 fields.List: list,
                 fields.LocalDateTime: datetime.datetime,
                 fields.Nested: "_from_nested_schema",
+                fields.Number: decimal.Decimal,
             }
         )
         return mapping
