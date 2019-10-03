@@ -80,6 +80,21 @@ def test_range_marshmallow_2():
     assert props["foo"]["minimum"] == 1
     assert props["foo"]["maximum"] == 3
 
+@pytest.mark.skipif(MARSHMALLOW_3, reason="fixed in marshmallow 3")
+def test_doubly_nested_skipped_titles():
+    class TestSchema(Schema):
+        foo = fields.List(fields.List(fields.Integer()))
+    
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    props = dumped["definitions"]["TestSchema"]["properties"]
+
+    assert props["foo"]["title"] == "foo"
+    assert props["foo"]["items"]["title"] == "foo"
+    with pytest.raises(KeyError):
+        props["foo"]["items"]["items"]["title"]
 
 @pytest.mark.skipif(MARSHMALLOW_2, reason="marshmallow 3 only")
 def test_range_marshmallow_3():
