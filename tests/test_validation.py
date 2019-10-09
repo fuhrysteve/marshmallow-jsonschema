@@ -53,17 +53,11 @@ def test_one_of_validator():
 
     dumped = validate_and_dump(schema)
 
-    assert dumped["definitions"]["UserSchema"]["properties"]["sex"]["enum"] == [
-        "male",
-        "female",
-        "non_binary",
-        "other",
-    ]
-    assert dumped["definitions"]["UserSchema"]["properties"]["sex"]["enumNames"] == [
-        "Male",
-        "Female",
-        "Non-binary/fluid",
-        "Other",
+    assert dumped["definitions"]["UserSchema"]["properties"]["sex"]["oneOf"] == [
+        {"type": "string", "title": "Male", "const": "male"},
+        {"type": "string", "title": "Female", "const": "female"},
+        {"type": "string", "title": "Non-binary/fluid", "const": "non_binary"},
+        {"type": "string", "title": "Other", "const": "other"},
     ]
 
 
@@ -76,8 +70,35 @@ def test_one_of_empty_enum():
     dumped = validate_and_dump(schema)
 
     foo_property = dumped["definitions"]["TestSchema"]["properties"]["foo"]
-    assert foo_property["enum"] == []
-    assert foo_property["enumNames"] == []
+    assert "oneOf" not in foo_property
+
+
+def test_one_of_object():
+    class TestSchema(Schema):
+        foo = fields.Dict(validate=OneOf([{"a": 1}]))
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    foo_property = dumped["definitions"]["TestSchema"]["properties"]["foo"]
+    assert "oneOf" not in foo_property
+
+
+def test_one_of_custom_field():
+    class CustomField(fields.String):
+        def _jsonschema_type_mapping(self):
+            return {"type": "string", "oneOf": [{"const": "one"}, {"const": "two"}]}
+
+    class TestSchema(Schema):
+        foo = CustomField(validate=OneOf(["one", "two"]))
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    foo_property = dumped["definitions"]["TestSchema"]["properties"]["foo"]
+    assert foo_property["oneOf"] == [{"const": "one"}, {"const": "two"}]
 
 
 def test_range():
