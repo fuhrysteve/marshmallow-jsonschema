@@ -27,6 +27,12 @@ pip install marshmallow-jsonschema
 * https://github.com/jdorn/json-editor
 * https://github.com/ulion/jsonform
 
+### Examples
+
+Word of caution: starting with marshmallow 3.0.0b7, `.dump()` now directly returns
+`data` instead of `(error, data)`, as noted in [marshmallow's changelog](https://github.com/marshmallow-code/marshmallow/blob/8cf1fb8d95f287d626ed0f38967c90198e28b476/CHANGELOG.rst#300b7-2018-02-03).
+marshmallow-jsonschema is directly affected by this and the examples below are
+for marshmallow<=3.0.0b7. To upgrade to >=3.0.0b7, remove the `.data` from the code.
 
 #### Simple Example
 
@@ -85,8 +91,7 @@ athlete_schema.dump(athlete).data
 
 #### Complete example Flask application using brutisin/json-forms
 
-![Screenshot]
-(http://i.imgur.com/jJv1wFk.png)
+![Screenshot](http://i.imgur.com/jJv1wFk.png)
 
 This example renders a form not dissimilar to how [wtforms](https://github.com/wtforms/wtforms) might render a form.
 
@@ -148,6 +153,7 @@ if __name__ == '__main__':
 ```
 
 
+### Advanced usage
 #### Custom Type support
 
 Simply add a `_jsonschema_type_mapping` method to your field
