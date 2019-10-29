@@ -154,6 +154,24 @@ if __name__ == '__main__':
 
 
 ### Advanced usage
+#### Adding metadata on schemas
+It is possible to define metadata on schema definition.
+So far, three of them are supported:
+ * description
+ * title
+ * additional_properties (results in additionalProperties when dumped)
+
+To use them, you need to provide a `Meta` inner class to your `Schema` with the respective properties:
+
+```python
+class MySchema(Schema):
+    class Meta:
+        additional_properties = True
+        title = "A nice title"
+        description = "A lengthy description"
+    a_field = fields.String()
+```
+
 #### Custom Type support
 
 Simply add a `_jsonschema_type_mapping` method to your field

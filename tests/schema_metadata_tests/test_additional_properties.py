@@ -3,7 +3,7 @@ from marshmallow import Schema, fields
 
 from marshmallow_jsonschema import UnsupportedValueError, JSONSchema
 from marshmallow_jsonschema.compat import RAISE, INCLUDE, EXCLUDE
-from . import validate_and_dump
+from .. import validate_and_dump
 
 
 def test_additional_properties_default():
