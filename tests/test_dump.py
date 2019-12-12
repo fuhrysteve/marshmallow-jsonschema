@@ -18,7 +18,7 @@ def test_dump_schema():
 
     props = dumped["definitions"]["UserSchema"]["properties"]
     for field_name, field in schema.fields.items():
-        assert field_name in props
+        assert field.data_key or field_name in props
 
 
 def test_default():

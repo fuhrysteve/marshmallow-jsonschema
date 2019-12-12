@@ -32,7 +32,7 @@ class UserSchema(Schema):
     email = fields.Email()
     balance = fields.Decimal()
     registered = fields.Boolean()
-    hair_colors = fields.List(fields.Raw)
+    hair_colors = fields.List(fields.Raw, data_key="hairColors", required=True)
     sex_choices = fields.List(fields.Raw)
     finger_count = fields.Integer()
     uid = fields.UUID()
