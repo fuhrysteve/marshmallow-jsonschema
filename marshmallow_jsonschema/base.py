@@ -170,7 +170,7 @@ class JSONSchema(Schema):
 
         for field_name, field in sorted(obj.fields.items()):
             if field.required:
-                required.append(field.name)
+                required.append(field.data_key or field.name)
 
         return required or missing
 
