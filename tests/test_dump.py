@@ -429,3 +429,32 @@ def test_required_excluded_when_empty():
     dumped = validate_and_dump(schema)
 
     assert "required" not in dumped["definitions"]["TestSchema"]
+
+
+def test_datetime_based():
+    class TestSchema(Schema):
+        f_date = fields.Date()
+        f_datetime = fields.DateTime()
+        f_time = fields.Time()
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    assert dumped["definitions"]["TestSchema"]["properties"]["f_date"] == {
+        "format": "date",
+        "title": "f_date",
+        "type": "string",
+    }
+
+    assert dumped["definitions"]["TestSchema"]["properties"]["f_datetime"] == {
+        "format": "date-time",
+        "title": "f_datetime",
+        "type": "string",
+    }
+
+    assert dumped["definitions"]["TestSchema"]["properties"]["f_time"] == {
+        "format": "time",
+        "title": "f_time",
+        "type": "string",
+    }

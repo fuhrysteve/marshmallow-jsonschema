@@ -52,7 +52,6 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = (
     # This part of a mapping is carefully selected from marshmallow source code,
     # see marshmallow.BaseSchema.TYPE_MAPPING.
     (fields.String, text_type),
-    (fields.DateTime, datetime.datetime),
     (fields.Float, float),
     (fields.Raw, text_type),
     (fields.Boolean, bool),
@@ -61,6 +60,7 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = (
     (fields.Time, datetime.time),
     (fields.Date, datetime.date),
     (fields.TimeDelta, datetime.timedelta),
+    (fields.DateTime, datetime.datetime),
     (fields.Decimal, decimal.Decimal),
     # These are some mappings that generally make sense for the rest
     # of marshmallow fields.
