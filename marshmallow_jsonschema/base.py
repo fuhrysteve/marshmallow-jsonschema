@@ -123,11 +123,12 @@ class JSONSchema(Schema):
         self._nested_schema_classes = {}
         self.nested = kwargs.pop("nested", False)
         self.props_ordered = kwargs.pop("props_ordered", False)
+        setattr(self.opts, "ordered", self.props_ordered)
         super(JSONSchema, self).__init__(*args, **kwargs)
 
     def get_properties(self, obj):
         """Fill out properties field."""
-        properties = {}
+        properties = self.dict_class()
 
         if self.props_ordered:
             fields_items_sequence = obj.fields.items()
