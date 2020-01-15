@@ -458,3 +458,30 @@ def test_datetime_based():
         "title": "f_time",
         "type": "string",
     }
+
+
+def test_sorting_properties():
+    class TestSchema(Schema):
+        class Meta:
+            ordered = True
+        d = fields.Str()
+        c = fields.Str()
+        a = fields.Str()
+
+    # Should be sorting of fields
+    schema = TestSchema()
+
+    dumped = JSONSchema().dump(schema)
+
+    properties_names = list(dumped["definitions"]["TestSchema"]["properties"].keys())
+    assert properties_names == ['a', 'c', 'd']
+
+    # Should be saving ordering of fields
+    schema = TestSchema()
+
+    dumped = JSONSchema(props_ordered=True).dump(schema)
+
+    properties_names = list(dumped["definitions"]["TestSchema"]["properties"].keys())
+    assert properties_names == ['d', 'c', 'a']
+
+

@@ -112,17 +112,29 @@ class JSONSchema(Schema):
     type = fields.Constant("object")
     required = fields.Method("get_required")
 
-    def __init__(self, *args, **kwargs):
-        """Setup internal cache of nested fields, to prevent recursion."""
+    def __init__(self, *args, props_ordered=False, **kwargs):
+        """Setup internal cache of nested fields, to prevent recursion.
+
+        :param bool props_ordered: if `True` order of properties will be save as declare in class,
+                                   else will using sorting, default is `False`.
+                                   Note: For the marshmallow scheme, also need to enable
+                                   ordering of fields too (via `class Meta`, attribute `ordered`).
+        """
         self._nested_schema_classes = {}
         self.nested = kwargs.pop("nested", False)
+        self.props_ordered = props_ordered
         super(JSONSchema, self).__init__(*args, **kwargs)
 
     def get_properties(self, obj):
         """Fill out properties field."""
         properties = {}
 
-        for field_name, field in sorted(obj.fields.items()):
+        if self.props_ordered:
+            fields_items_sequence = obj.fields.items()
+        else:
+            fields_items_sequence = sorted(obj.fields.items())
+
+        for field_name, field in fields_items_sequence:
             schema = self._get_schema_for_field(obj, field)
             properties[field.metadata.get("name") or field.name] = schema
 
