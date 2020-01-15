@@ -129,8 +129,10 @@ def test_range_non_number_error():
 
 
 def test_regexp():
-    ipv4_regex = r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"\
-                 r"([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
+    ipv4_regex = (
+        r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
+        r"([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
+    )
 
     class TestSchema(Schema):
         ip_address = fields.String(validate=validate.Regexp(ipv4_regex))
@@ -142,7 +144,7 @@ def test_regexp():
     assert dumped["definitions"]["TestSchema"]["properties"]["ip_address"] == {
         "title": "ip_address",
         "type": "string",
-        "pattern": ipv4_regex
+        "pattern": ipv4_regex,
     }
 
 
