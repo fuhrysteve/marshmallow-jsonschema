@@ -464,6 +464,7 @@ def test_sorting_properties():
     class TestSchema(Schema):
         class Meta:
             ordered = True
+
         d = fields.Str()
         c = fields.Str()
         a = fields.Str()
@@ -474,7 +475,7 @@ def test_sorting_properties():
     dumped = JSONSchema().dump(schema)
 
     properties_names = list(dumped["definitions"]["TestSchema"]["properties"].keys())
-    assert properties_names == ['a', 'c', 'd']
+    assert properties_names == ["a", "c", "d"]
 
     # Should be saving ordering of fields
     schema = TestSchema()
@@ -482,6 +483,6 @@ def test_sorting_properties():
     dumped = JSONSchema(props_ordered=True).dump(schema)
 
     properties_names = list(dumped["definitions"]["TestSchema"]["properties"].keys())
-    assert properties_names == ['d', 'c', 'a']
+    assert properties_names == ["d", "c", "a"]
 
 

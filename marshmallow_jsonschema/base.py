@@ -112,7 +112,7 @@ class JSONSchema(Schema):
     type = fields.Constant("object")
     required = fields.Method("get_required")
 
-    def __init__(self, *args, props_ordered=False, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Setup internal cache of nested fields, to prevent recursion.
 
         :param bool props_ordered: if `True` order of properties will be save as declare in class,
@@ -122,7 +122,7 @@ class JSONSchema(Schema):
         """
         self._nested_schema_classes = {}
         self.nested = kwargs.pop("nested", False)
-        self.props_ordered = props_ordered
+        self.props_ordered = kwargs.pop("props_ordered", False)
         super(JSONSchema, self).__init__(*args, **kwargs)
 
     def get_properties(self, obj):
