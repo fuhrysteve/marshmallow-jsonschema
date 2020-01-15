@@ -120,3 +120,35 @@ def handle_range(schema, field, validator, parent_schema):
         else:
             schema["exclusiveMaximum"] = validator.max
     return schema
+
+
+def handle_regexp(schema, field, validator, parent_schema):
+    """Adds validation logic for ``marshmallow.validate.Regexp``, setting the
+    values appropriately ``fields.String`` and it's subclasses.
+
+    Args:
+        schema (dict): The original JSON schema we generated. This is what we
+            want to post-process.
+        field (fields.Field): The field that generated the original schema and
+            who this post-processor belongs to.
+        validator (marshmallow.validate.Regexp): The validator attached to the
+            passed in field.
+        parent_schema (marshmallow.Schema): The Schema instance that the field
+            belongs to.
+
+    Returns:
+        dict: New JSON Schema that has been post processed and
+            altered.
+
+    Raises:
+        UnsupportedValueError: Raised if the `field` is not an instance of
+            `fields.String`.
+    """
+    if not isinstance(field, fields.String):
+        raise UnsupportedValueError(
+            "'Regexp' validator for non-string fields is not supported"
+        )
+
+    schema["pattern"] = validator.regex.pattern
+
+    return schema

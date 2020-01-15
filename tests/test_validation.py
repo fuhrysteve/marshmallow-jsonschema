@@ -126,3 +126,31 @@ def test_range_non_number_error():
 
     with pytest.raises(UnsupportedValueError):
         json_schema.dump(schema)
+
+
+def test_regexp():
+    ipv4_regex = r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"\
+                 r"([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
+
+    class TestSchema(Schema):
+        ip_address = fields.String(validate=validate.Regexp(ipv4_regex))
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    assert dumped["definitions"]["TestSchema"]["properties"]["ip_address"] == {
+        "title": "ip_address",
+        "type": "string",
+        "pattern": ipv4_regex
+    }
+
+
+def test_regexp_error():
+    class TestSchema(Schema):
+        test_regexp = fields.Int(validate=validate.Regexp(r"\d+"))
+
+    schema = TestSchema()
+
+    with pytest.raises(UnsupportedValueError):
+        dumped = validate_and_dump(schema)
