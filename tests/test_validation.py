@@ -156,3 +156,19 @@ def test_regexp_error():
 
     with pytest.raises(UnsupportedValueError):
         dumped = validate_and_dump(schema)
+
+
+def test_custom_validator():
+    class TestValidator(validate.Range):
+        _jsonschema_base_validator_class = validate.Range
+
+    class TestSchema(Schema):
+        test_field = fields.Int(validate=TestValidator(min=1, max=10))
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    props = dumped["definitions"]["TestSchema"]["properties"]
+    assert props["test_field"]["minimum"] == 1
+    assert props["test_field"]["maximum"] == 10

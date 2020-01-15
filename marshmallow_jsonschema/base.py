@@ -200,9 +200,16 @@ class JSONSchema(Schema):
                 schema = self._from_python_type(obj, field, pytype)
         # Apply any and all validators that field may have
         for validator in field.validators:
-            for map_class, map_handler in FIELD_VALIDATORS.items():
-                if issubclass(validator.__class__, map_class):
-                    schema = map_handler(schema, field, validator, obj)
+            if validator.__class__ in FIELD_VALIDATORS:
+                schema = FIELD_VALIDATORS[validator.__class__](
+                    schema, field, validator, obj
+                )
+            else:
+                base_class = getattr(
+                    validator, "_jsonschema_base_validator_class", None
+                )
+                if base_class is not None and base_class in FIELD_VALIDATORS:
+                    schema = FIELD_VALIDATORS[base_class](schema, field, validator, obj)
         return schema
 
     def _from_nested_schema(self, obj, field):
