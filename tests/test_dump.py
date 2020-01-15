@@ -2,6 +2,7 @@ import pytest
 from marshmallow import Schema, fields, validate
 
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
+from marshmallow_jsonschema.compat import dot_data_backwards_compatible
 from . import UserSchema, validate_and_dump
 
 
@@ -472,17 +473,22 @@ def test_sorting_properties():
     # Should be sorting of fields
     schema = TestSchema()
 
-    dumped = JSONSchema().dump(schema)
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema)
+    data = dot_data_backwards_compatible(dumped)
 
-    properties_names = list(dumped["definitions"]["TestSchema"]["properties"].keys())
+    sorted_keys = sorted(data["definitions"]["TestSchema"]["properties"].keys())
+    properties_names = [k for k in sorted_keys]
     assert properties_names == ["a", "c", "d"]
 
     # Should be saving ordering of fields
     schema = TestSchema()
 
-    dumped = JSONSchema(props_ordered=True).dump(schema)
+    json_schema = JSONSchema(props_ordered=True)
+    dumped = json_schema.dump(schema)
+    data = dot_data_backwards_compatible(dumped)
 
-    properties_names = list(dumped["definitions"]["TestSchema"]["properties"].keys())
+    keys = data["definitions"]["TestSchema"]["properties"].keys()
+    properties_names = [k for k in keys]
+
     assert properties_names == ["d", "c", "a"]
-
-
