@@ -18,7 +18,7 @@ from .compat import (
     RAISE,
 )
 from .exceptions import UnsupportedValueError
-from .validation import handle_length, handle_one_of, handle_range
+from .validation import handle_length, handle_one_of, handle_range, handle_regexp
 
 __all__ = ("JSONSchema",)
 
@@ -52,7 +52,6 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = (
     # This part of a mapping is carefully selected from marshmallow source code,
     # see marshmallow.BaseSchema.TYPE_MAPPING.
     (fields.String, text_type),
-    (fields.DateTime, datetime.datetime),
     (fields.Float, float),
     (fields.Raw, text_type),
     (fields.Boolean, bool),
@@ -61,6 +60,7 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = (
     (fields.Time, datetime.time),
     (fields.Date, datetime.date),
     (fields.TimeDelta, datetime.timedelta),
+    (fields.DateTime, datetime.datetime),
     (fields.Decimal, decimal.Decimal),
     # These are some mappings that generally make sense for the rest
     # of marshmallow fields.
@@ -78,6 +78,7 @@ FIELD_VALIDATORS = {
     validate.Length: handle_length,
     validate.OneOf: handle_one_of,
     validate.Range: handle_range,
+    validate.Regexp: handle_regexp,
 }
 
 
@@ -112,16 +113,29 @@ class JSONSchema(Schema):
     required = fields.Method("get_required")
 
     def __init__(self, *args, **kwargs):
-        """Setup internal cache of nested fields, to prevent recursion."""
+        """Setup internal cache of nested fields, to prevent recursion.
+
+        :param bool props_ordered: if `True` order of properties will be save as declare in class,
+                                   else will using sorting, default is `False`.
+                                   Note: For the marshmallow scheme, also need to enable
+                                   ordering of fields too (via `class Meta`, attribute `ordered`).
+        """
         self._nested_schema_classes = {}
         self.nested = kwargs.pop("nested", False)
+        self.props_ordered = kwargs.pop("props_ordered", False)
+        setattr(self.opts, "ordered", self.props_ordered)
         super(JSONSchema, self).__init__(*args, **kwargs)
 
     def get_properties(self, obj):
         """Fill out properties field."""
-        properties = {}
+        properties = self.dict_class()
 
-        for field_name, field in sorted(obj.fields.items()):
+        if self.props_ordered:
+            fields_items_sequence = obj.fields.items()
+        else:
+            fields_items_sequence = sorted(obj.fields.items())
+
+        for field_name, field in fields_items_sequence:
             schema = self._get_schema_for_field(obj, field)
             properties[field.metadata.get("name") or field.name] = schema
 
@@ -190,6 +204,12 @@ class JSONSchema(Schema):
                 schema = FIELD_VALIDATORS[validator.__class__](
                     schema, field, validator, obj
                 )
+            else:
+                base_class = getattr(
+                    validator, "_jsonschema_base_validator_class", None
+                )
+                if base_class is not None and base_class in FIELD_VALIDATORS:
+                    schema = FIELD_VALIDATORS[base_class](schema, field, validator, obj)
         return schema
 
     def _from_nested_schema(self, obj, field):

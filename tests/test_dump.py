@@ -2,6 +2,7 @@ import pytest
 from marshmallow import Schema, fields, validate
 
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
+from marshmallow_jsonschema.compat import dot_data_backwards_compatible
 from . import UserSchema, validate_and_dump
 
 
@@ -429,3 +430,65 @@ def test_required_excluded_when_empty():
     dumped = validate_and_dump(schema)
 
     assert "required" not in dumped["definitions"]["TestSchema"]
+
+
+def test_datetime_based():
+    class TestSchema(Schema):
+        f_date = fields.Date()
+        f_datetime = fields.DateTime()
+        f_time = fields.Time()
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    assert dumped["definitions"]["TestSchema"]["properties"]["f_date"] == {
+        "format": "date",
+        "title": "f_date",
+        "type": "string",
+    }
+
+    assert dumped["definitions"]["TestSchema"]["properties"]["f_datetime"] == {
+        "format": "date-time",
+        "title": "f_datetime",
+        "type": "string",
+    }
+
+    assert dumped["definitions"]["TestSchema"]["properties"]["f_time"] == {
+        "format": "time",
+        "title": "f_time",
+        "type": "string",
+    }
+
+
+def test_sorting_properties():
+    class TestSchema(Schema):
+        class Meta:
+            ordered = True
+
+        d = fields.Str()
+        c = fields.Str()
+        a = fields.Str()
+
+    # Should be sorting of fields
+    schema = TestSchema()
+
+    json_schema = JSONSchema()
+    dumped = json_schema.dump(schema)
+    data = dot_data_backwards_compatible(dumped)
+
+    sorted_keys = sorted(data["definitions"]["TestSchema"]["properties"].keys())
+    properties_names = [k for k in sorted_keys]
+    assert properties_names == ["a", "c", "d"]
+
+    # Should be saving ordering of fields
+    schema = TestSchema()
+
+    json_schema = JSONSchema(props_ordered=True)
+    dumped = json_schema.dump(schema)
+    data = dot_data_backwards_compatible(dumped)
+
+    keys = data["definitions"]["TestSchema"]["properties"].keys()
+    properties_names = [k for k in keys]
+
+    assert properties_names == ["d", "c", "a"]
