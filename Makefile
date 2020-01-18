@@ -1,6 +1,6 @@
 PROJECT = marshmallow_jsonschema
 
-PYTHON_VERSION ?= 3.7
+PYTHON_VERSION ?= 3.8
 VIRTUAL_ENV ?= .venv
 PYTHON ?= $(VIRTUAL_ENV)/bin/python
 

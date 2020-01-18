@@ -1,5 +1,6 @@
 from jsonschema import Draft7Validator
 from marshmallow import Schema, fields, validate
+from marshmallow_jsonschema.compat import MARSHMALLOW_3
 
 from marshmallow_jsonschema import JSONSchema
 from marshmallow_jsonschema.compat import dot_data_backwards_compatible
@@ -26,7 +27,6 @@ class UserSchema(Schema):
     )
     created_iso = fields.DateTime(format="iso", attribute="created", dump_only=True)
     updated = fields.DateTime()
-    updated_local = fields.LocalDateTime(attribute="updated", dump_only=True)
     species = fields.String(attribute="SPECIES")
     id = fields.String(default="no-id")
     homepage = fields.Url()
@@ -52,6 +52,10 @@ class UserSchema(Schema):
     )
     github = fields.Nested(GithubProfile)
     const = fields.String(validate=validate.Length(equal=50))
+
+
+if MARSHMALLOW_3:
+    UserSchema.updated_naive = fields.NaiveDateTime(attribute="updated", dump_only=True)
 
 
 def _validate_schema(schema):
