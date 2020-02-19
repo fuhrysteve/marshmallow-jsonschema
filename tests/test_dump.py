@@ -400,6 +400,22 @@ def test_metadata_direct_from_field():
     }
 
 
+def test_allow_none():
+    """A field with allow_none set to True should have type null as additional."""
+    class TestSchema(Schema):
+        id = fields.Integer(required=True)
+        readonly_fld = fields.String(allow_none=True)
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    assert dumped["definitions"]["TestSchema"]["properties"]["readonly_fld"] == {
+        "title": "readonly_fld",
+        "type": ["string", "null"]
+    }
+
+
 def test_dumps_iterable_enums():
     mapping = {"a": 0, "b": 1, "c": 2}
 
