@@ -164,6 +164,10 @@ class JSONSchema(Schema):
         if field.default is not missing:
             json_schema["default"] = field.default
 
+        if field.allow_none:
+            previous_type = json_schema["type"]
+            json_schema["type"] = [previous_type, "null"]
+
         # NOTE: doubled up to maintain backwards compatibility
         metadata = field.metadata.get("metadata", {})
         metadata.update(field.metadata)
