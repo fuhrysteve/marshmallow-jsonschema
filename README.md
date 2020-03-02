@@ -29,10 +29,8 @@ pip install marshmallow-jsonschema
 
 ### Examples
 
-Word of caution: starting with marshmallow 3.0.0b7, `.dump()` now directly returns
-`data` instead of `(error, data)`, as noted in [marshmallow's changelog](https://github.com/marshmallow-code/marshmallow/blob/8cf1fb8d95f287d626ed0f38967c90198e28b476/CHANGELOG.rst#300b7-2018-02-03).
-marshmallow-jsonschema is directly affected by this and the examples below are
-for marshmallow<=3.0.0b7. To upgrade to >=3.0.0b7, remove the `.data` from the code.
+Note that while these examples are using marshmallow v3 API, marshmallow v2 is
+also still supported and part of the build. Support will be dropped for v2 in a future release.
 
 #### Simple Example
 
@@ -48,7 +46,7 @@ class UserSchema(Schema):
 user_schema = UserSchema()
 
 json_schema = JSONSchema()
-json_schema.dump(user_schema).data
+json_schema.dump(user_schema)
 ```
 Yields:
 ```python
@@ -86,7 +84,7 @@ class AthleteSchema(Schema):
 athlete = Athlete()
 athlete_schema = AthleteSchema()
 
-athlete_schema.dump(athlete).data
+athlete_schema.dump(athlete)
 ```
 
 #### Complete example Flask application using brutisin/json-forms
@@ -115,7 +113,7 @@ class UserSchema(Schema):
 @app.route('/schema')
 def schema():
     schema = UserSchema()
-    return jsonify(JSONSchema().dump(schema).data)
+    return jsonify(JSONSchema().dump(schema))
 
 
 @app.route('/')
@@ -193,5 +191,5 @@ class UserSchema(Schema):
 
 schema = UserSchema()
 json_schema = JSONSchema()
-json_schema.dump(schema).data
+json_schema.dump(schema)
 ```

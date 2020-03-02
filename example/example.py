@@ -13,7 +13,7 @@ class UserSchema(Schema):
 @app.route("/schema")
 def schema():
     schema = UserSchema()
-    return jsonify(JSONSchema().dump(schema).data)
+    return jsonify(JSONSchema().dump(schema))
 
 
 @app.route("/")
