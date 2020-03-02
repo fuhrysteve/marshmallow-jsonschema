@@ -158,7 +158,7 @@ class JSONSchema(Schema):
         if field.attribute or field.name:
             json_schema["title"] = field.attribute or field.name
 
-        for key, val in TYPE_MAP[pytype].items():
+        for key, val in PY_TO_JSON_TYPES_MAP[pytype].items():
             json_schema[key] = val
 
         if field.dump_only:
