@@ -31,6 +31,9 @@ test:
 test_coverage:
 	pytest --cov-report html --cov-config .coveragerc --cov $(PROJECT)
 
+install_pandoc:
+	sudo apt install pandoc
+	pip install pypandoc
 
 pypitest:
 	python setup.py sdist upload -r pypitest
