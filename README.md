@@ -205,6 +205,8 @@ and full featured.. the catch is that it requires a proprietary
 to provide advanced control how the form is rendered.
 [Here's a live playground](https://rjsf-team.github.io/react-jsonschema-form/)
 
+*(new in version 0.10.0)*
+
 ```python
 from marshmallow_jsonschema.extensions import ReactJsonSchemaFormJSONSchema
 
