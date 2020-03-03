@@ -22,8 +22,9 @@ pip install marshmallow-jsonschema
 
 #### Some Client tools can render forms using JSON Schema
 
+* [react-jsonschema-form](https://github.com/mozilla-services/react-jsonschema-form) (recommended)
+ * See below extension for this excellent library!
 * https://github.com/brutusin/json-forms
-* https://github.com/mozilla-services/react-jsonschema-form
 * https://github.com/jdorn/json-editor
 * https://github.com/ulion/jsonform
 
@@ -192,4 +193,44 @@ class UserSchema(Schema):
 schema = UserSchema()
 json_schema = JSONSchema()
 json_schema.dump(schema)
+```
+
+
+### React-JSONSchema-Form Extension
+
+[react-jsonschema-form](https://react-jsonschema-form.readthedocs.io/en/latest/)
+is a library for rendering jsonschemas as a form using React. It is very powerful
+and full featured.. the catch is that it requires a proprietary
+[`uiSchema`](https://react-jsonschema-form.readthedocs.io/en/latest/form-customization/#the-uischema-object)
+to provide advanced control how the form is rendered.
+[Here's a live playground](https://rjsf-team.github.io/react-jsonschema-form/)
+
+```python
+from marshmallow_jsonschema.extensions import ReactJsonSchemaFormJSONSchema
+
+class MySchema(Schema):
+    first_name = fields.String(
+        metadata={
+            'ui:autofocus': True,
+        }
+    )
+    last_name = fields.String()
+
+    class Meta:
+        react_uischema_extra = {
+            'ui:order': [
+                'first_name',
+                'last_name',
+            ]
+        }
+
+
+json_schema_obj = ReactJsonSchemaFormJSONSchema()
+schema = MySchema()
+
+# here's your jsonschema
+data = json_schema_obj.dump(schema)
+
+# ..and here's your uiSchema!
+ui_schema_json = json_schema_obj.dump_uischema(schema)
 ```
