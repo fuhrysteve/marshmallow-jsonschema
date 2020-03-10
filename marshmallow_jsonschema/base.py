@@ -153,7 +153,10 @@ class JSONSchema(Schema):
 
     def _from_python_type(self, obj, field, pytype):
         """Get schema definition from python type."""
-        json_schema = {"title": field.attribute or field.name}
+        json_schema = {}
+
+        if field.attribute or field.name:
+            json_schema["title"] = field.attribute or field.name
 
         for key, val in PY_TO_JSON_TYPES_MAP[pytype].items():
             json_schema[key] = val
