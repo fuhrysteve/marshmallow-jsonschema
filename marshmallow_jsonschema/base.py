@@ -82,19 +82,56 @@ FIELD_VALIDATORS = {
 }
 
 
-def _resolve_additional_properties(cls):
-    meta = cls.Meta
+def _get_schema_metadata(schema_cls):
+    metadata = {}
 
-    additional_properties = getattr(meta, "additional_properties", None)
-    if additional_properties is not None:
-        if additional_properties in (True, False):
-            return additional_properties
-        else:
+    metadata["additionalProperties"] = \
+        _resolve_additional_properties(schema_cls)
+
+    title = _resolve_metadata(schema_cls, "title", type=str)
+    if title:
+        metadata["title"] = title
+
+    description = _resolve_metadata(schema_cls, "description", type=str)
+    if description:
+        metadata["description"] = description
+
+    return metadata
+
+
+def _resolve_metadata(schema_cls, name, type=None, acceptable_values=None):
+    meta = schema_cls.Meta
+
+    metadata = getattr(meta, name, None)
+    if metadata is None:
+        return metadata
+
+    if type is not None:
+        if not isinstance(metadata, type):
             raise UnsupportedValueError(
-                "`additional_properties` must be either True or False"
+                "`{}` must be of type {}".format(name, type.__name__)
             )
 
-    unknown = getattr(meta, "unknown", None)
+    if acceptable_values is not None:
+        if metadata not in acceptable_values:
+            raise UnsupportedValueError(
+                "`{}` must be one of the following values: {}".format(
+                    name,
+                    ", ".join([str(v) for v in acceptable_values])
+                )
+            )
+
+    return metadata
+
+
+def _resolve_additional_properties(schema_cls):
+    additional_properties = _resolve_metadata(
+        schema_cls, "additional_properties", type=bool)
+
+    if additional_properties is not None:
+        return additional_properties
+
+    unknown = getattr(schema_cls.Meta, "unknown", None)
     if unknown is None:
         return False
     elif unknown in (RAISE, EXCLUDE):
@@ -243,9 +280,7 @@ class JSONSchema(Schema):
                 wrapped_nested.dump(nested_instance)
             )
 
-            wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
-                nested_cls
-            )
+            wrapped_dumped.update(_get_schema_metadata(nested_cls))
 
             self._nested_schema_classes[name] = wrapped_dumped
 
@@ -282,10 +317,10 @@ class JSONSchema(Schema):
         if self.nested:  # no need to wrap, will be in outer defs
             return data
 
-        cls = self.obj.__class__
-        name = cls.__name__
+        schema_cls = self.obj.__class__
+        name = schema_cls.__name__
 
-        data["additionalProperties"] = _resolve_additional_properties(cls)
+        data.update(_get_schema_metadata(schema_cls))
 
         self._nested_schema_classes[name] = data
         root = {
