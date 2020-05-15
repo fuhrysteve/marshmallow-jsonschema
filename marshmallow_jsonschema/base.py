@@ -2,10 +2,13 @@ import datetime
 import decimal
 import uuid
 from inspect import isclass
+from enum import Enum
 
 from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.decorators import post_dump
+
+import marshmallow_enum
 
 from .compat import (
     text_type,
@@ -41,6 +44,7 @@ PY_TO_JSON_TYPES_MAP = {
     float: {"type": "number", "format": "float"},
     int: {"type": "number", "format": "integer"},
     bool: {"type": "boolean"},
+    Enum: {"type": "string", "enum": []}, 
 }
 
 # We use these pairs to get proper python type from marshmallow type.
@@ -72,6 +76,7 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = (
     # This one is here just for completeness sake and to check for
     # unknown marshmallow fields more cleanly.
     (fields.Nested, dict),
+    (marshmallow_enum.EnumField, Enum),
 )
 
 FIELD_VALIDATORS = {
@@ -163,6 +168,9 @@ class JSONSchema(Schema):
 
         if field.default is not missing:
             json_schema["default"] = field.default
+
+        if isinstance(field, marshmallow_enum.EnumField,):
+            json_schema["enum"] = [x for x in field.enum.__members__]
 
         if field.allow_none:
             previous_type = json_schema["type"]
