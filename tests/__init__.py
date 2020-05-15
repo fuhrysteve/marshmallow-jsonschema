@@ -1,3 +1,7 @@
+from enum import Enum
+
+from marshmallow_enum import EnumField
+
 from jsonschema import Draft7Validator
 from marshmallow import Schema, fields, validate
 from marshmallow_jsonschema.compat import MARSHMALLOW_3
@@ -12,6 +16,16 @@ class Address(Schema):
     number = fields.String(required=True)
     city = fields.String(required=True)
     floor = fields.Integer(validate=validate.Range(min=1, max=4))
+
+
+class Color(Enum):
+    RED = 1
+    GREEN = 2
+    YELLOW = 3
+
+
+class TrafficStop(Schema):
+    light_color = EnumField(Color)
 
 
 class GithubProfile(Schema):
