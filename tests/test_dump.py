@@ -509,3 +509,17 @@ def test_sorting_properties():
     properties_names = [k for k in keys]
 
     assert properties_names == ["d", "c", "a"]
+
+def test_partial_loading():
+    class TestSchema(Schema):
+        id = fields.Integer(required=True)
+        foo = fields.Integer(required=True)
+
+    json_schema = JSONSchema()
+    schema = TestSchema(partial=True)
+    dumped = json_schema.dump(schema)
+    assert dumped['definitions']['TestSchema']['required'] == []
+
+    schema = TestSchema(partial=('foo', ))
+    dumped = json_schema.dump(schema)
+    assert dumped['definitions']['TestSchema']['required'] == ['id']

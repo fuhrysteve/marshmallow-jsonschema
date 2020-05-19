@@ -143,10 +143,14 @@ class JSONSchema(Schema):
 
     def get_required(self, obj):
         """Fill out required field."""
+        if obj.partial == True:
+            return []
+
         required = []
+        partial = obj.partial or []
 
         for field_name, field in sorted(obj.fields.items()):
-            if field.required:
+            if field.required and field.name not in partial:
                 required.append(field.name)
 
         return required or missing
