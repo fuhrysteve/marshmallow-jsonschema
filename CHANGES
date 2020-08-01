@@ -1,6 +1,8 @@
 0.11.0 (unreleased)
     - drop support for python 2 & 3.5, as well as marshmallow 2.
       Python >= 3.6 and marshmallow >= 3 are now required!
+      Python 3.5 should still work - no breaking changes yet,
+      it just isn't a part of the build anymore.
 
 0.10.0 (2020-03-03)
     - added ReactJsonSchemaFormJSONSchema extension
