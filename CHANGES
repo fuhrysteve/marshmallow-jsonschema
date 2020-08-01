@@ -1,3 +1,7 @@
+0.11.0 (unreleased)
+    - drop support for python 2 and marshmallow 2.
+      Python >= 3.5 and marshmallow >= 3 are now required!
+
 0.10.0 (2020-03-03)
     - added ReactJsonSchemaFormJSONSchema extension
     - Add support for allow_none (#106 thanks @avilaton!)

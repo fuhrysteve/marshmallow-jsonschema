@@ -16,6 +16,8 @@ or mobile device).
 
 #### Installation
 
+Requires python>=3 and marshmallow>=3. (For python 2 & marshmallow 2 support, please use marshmallow-jsonschema<0.11)
+
 ```
 pip install marshmallow-jsonschema
 ```
@@ -29,9 +31,6 @@ pip install marshmallow-jsonschema
 * https://github.com/ulion/jsonform
 
 ### Examples
-
-Note that while these examples are using marshmallow v3 API, marshmallow v2 is
-also still supported and part of the build. Support will be dropped for v2 in a future release.
 
 #### Simple Example
 
@@ -235,4 +234,3 @@ data = json_schema_obj.dump(schema)
 
 # ..and here's your uiSchema!
 ui_schema_json = json_schema_obj.dump_uischema(schema)
-```
