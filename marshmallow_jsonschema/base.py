@@ -7,16 +7,7 @@ from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.decorators import post_dump
 
-from .compat import (
-    text_type,
-    binary_type,
-    basestring,
-    dot_data_backwards_compatible,
-    list_inner,
-    INCLUDE,
-    EXCLUDE,
-    RAISE,
-)
+from marshmallow import INCLUDE, EXCLUDE, RAISE
 from .exceptions import UnsupportedValueError
 from .validation import handle_length, handle_one_of, handle_range, handle_regexp
 
@@ -33,8 +24,8 @@ PY_TO_JSON_TYPES_MAP = {
     datetime.datetime: {"type": "string", "format": "date-time"},
     datetime.date: {"type": "string", "format": "date"},
     uuid.UUID: {"type": "string", "format": "uuid"},
-    text_type: {"type": "string"},
-    binary_type: {"type": "string"},
+    str: {"type": "string"},
+    bytes: {"type": "string"},
     decimal.Decimal: {"type": "number", "format": "decimal"},
     set: {"type": "array"},
     tuple: {"type": "array"},
@@ -51,9 +42,9 @@ PY_TO_JSON_TYPES_MAP = {
 MARSHMALLOW_TO_PY_TYPES_PAIRS = (
     # This part of a mapping is carefully selected from marshmallow source code,
     # see marshmallow.BaseSchema.TYPE_MAPPING.
-    (fields.String, text_type),
+    (fields.String, str),
     (fields.Float, float),
-    (fields.Raw, text_type),
+    (fields.Raw, str),
     (fields.Boolean, bool),
     (fields.Integer, int),
     (fields.UUID, uuid.UUID),
@@ -64,9 +55,9 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = (
     (fields.Decimal, decimal.Decimal),
     # These are some mappings that generally make sense for the rest
     # of marshmallow fields.
-    (fields.Email, text_type),
+    (fields.Email, str),
     (fields.Dict, dict),
-    (fields.Url, text_type),
+    (fields.Url, str),
     (fields.List, list),
     (fields.Number, decimal.Decimal),
     # This one is here just for completeness sake and to check for
@@ -178,7 +169,7 @@ class JSONSchema(Schema):
             json_schema[md_key] = md_val
 
         if isinstance(field, fields.List):
-            json_schema["items"] = self._get_schema_for_field(obj, list_inner(field))
+            json_schema["items"] = self._get_schema_for_field(obj, field.inner)
         return json_schema
 
     def _get_python_type(self, field):
@@ -218,7 +209,7 @@ class JSONSchema(Schema):
 
     def _from_nested_schema(self, obj, field):
         """Support nested field."""
-        if isinstance(field.nested, basestring):
+        if isinstance(field.nested, (str, bytes)):
             nested = get_class(field.nested)
         else:
             nested = field.nested
@@ -239,9 +230,7 @@ class JSONSchema(Schema):
         # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
             wrapped_nested = self.__class__(nested=True)
-            wrapped_dumped = dot_data_backwards_compatible(
-                wrapped_nested.dump(nested_instance)
-            )
+            wrapped_dumped = wrapped_nested.dump(nested_instance)
 
             wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
                 nested_cls

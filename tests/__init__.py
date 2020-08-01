@@ -1,9 +1,7 @@
 from jsonschema import Draft7Validator
 from marshmallow import Schema, fields, validate
-from marshmallow_jsonschema.compat import MARSHMALLOW_3
 
 from marshmallow_jsonschema import JSONSchema
-from marshmallow_jsonschema.compat import dot_data_backwards_compatible
 
 
 class Address(Schema):
@@ -26,6 +24,7 @@ class UserSchema(Schema):
         format="%Y-%m-%d", attribute="created", dump_only=True
     )
     created_iso = fields.DateTime(format="iso", attribute="created", dump_only=True)
+    updated_naive = fields.NaiveDateTime(attribute="updated", dump_only=True)
     updated = fields.DateTime()
     species = fields.String(attribute="SPECIES")
     id = fields.String(default="no-id")
@@ -54,10 +53,6 @@ class UserSchema(Schema):
     const = fields.String(validate=validate.Length(equal=50))
 
 
-if MARSHMALLOW_3:
-    UserSchema.updated_naive = fields.NaiveDateTime(attribute="updated", dump_only=True)
-
-
 def _validate_schema(schema):
     """
     raises jsonschema.exceptions.SchemaError
@@ -67,8 +62,7 @@ def _validate_schema(schema):
 
 def validate_and_dump(schema):
     json_schema = JSONSchema()
-    dumped = json_schema.dump(schema)
-    data = dot_data_backwards_compatible(dumped)
+    data = json_schema.dump(schema)
     _validate_schema(data)
     # ensure last version
     assert data["$schema"] == "http://json-schema.org/draft-07/schema#"

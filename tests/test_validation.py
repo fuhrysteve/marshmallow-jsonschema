@@ -3,7 +3,6 @@ from marshmallow import Schema, fields, validate
 from marshmallow.validate import OneOf, Range
 
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
-from marshmallow_jsonschema.compat import MARSHMALLOW_2, MARSHMALLOW_3
 from . import UserSchema, validate_and_dump
 
 
@@ -67,22 +66,7 @@ def test_one_of_empty_enum():
     assert foo_property["enumNames"] == []
 
 
-@pytest.mark.skipif(MARSHMALLOW_3, reason="marshmallow 2 only")
-def test_range_marshmallow_2():
-    class TestSchema(Schema):
-        foo = fields.Integer(validate=Range(min=1, max=3))
-
-    schema = TestSchema()
-
-    dumped = validate_and_dump(schema)
-
-    props = dumped["definitions"]["TestSchema"]["properties"]
-    assert props["foo"]["minimum"] == 1
-    assert props["foo"]["maximum"] == 3
-
-
-@pytest.mark.skipif(MARSHMALLOW_2, reason="marshmallow 3 only")
-def test_range_marshmallow_3():
+def test_range():
     class TestSchema(Schema):
         foo = fields.Integer(
             validate=Range(min=1, min_inclusive=False, max=3, max_inclusive=False)

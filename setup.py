@@ -33,7 +33,7 @@ REQUIREMENTS_TOX = open(os.path.join(PROJECT_DIR, REQUIREMENTS_TOX_FILE)).readli
 
 setup(
     name="marshmallow-jsonschema",
-    version="0.10.0",
+    version="0.11.0",
     description="JSON Schema Draft v4 (http://json-schema.org/)"
     " formatting with marshmallow",
     long_description=long_description,
@@ -55,8 +55,6 @@ setup(
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
