@@ -1,8 +1,7 @@
 import pytest
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, RAISE, INCLUDE, EXCLUDE
 
 from marshmallow_jsonschema import UnsupportedValueError, JSONSchema
-from marshmallow_jsonschema.compat import RAISE, INCLUDE, EXCLUDE
 from . import validate_and_dump
 
 

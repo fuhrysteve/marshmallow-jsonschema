@@ -7,7 +7,7 @@ from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.decorators import post_dump
 
-from .compat import dot_data_backwards_compatible, list_inner, INCLUDE, EXCLUDE, RAISE
+from marshmallow import INCLUDE, EXCLUDE, RAISE
 from .exceptions import UnsupportedValueError
 from .validation import handle_length, handle_one_of, handle_range, handle_regexp
 
@@ -169,7 +169,7 @@ class JSONSchema(Schema):
             json_schema[md_key] = md_val
 
         if isinstance(field, fields.List):
-            json_schema["items"] = self._get_schema_for_field(obj, list_inner(field))
+            json_schema["items"] = self._get_schema_for_field(obj, field.inner)
         return json_schema
 
     def _get_python_type(self, field):
@@ -230,9 +230,7 @@ class JSONSchema(Schema):
         # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
             wrapped_nested = self.__class__(nested=True)
-            wrapped_dumped = dot_data_backwards_compatible(
-                wrapped_nested.dump(nested_instance)
-            )
+            wrapped_dumped = wrapped_nested.dump(nested_instance)
 
             wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
                 nested_cls
