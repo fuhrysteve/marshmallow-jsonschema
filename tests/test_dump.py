@@ -1,7 +1,9 @@
 import pytest
+import jsonschema
 from marshmallow import Schema, fields, validate
 
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
+
 from . import UserSchema, validate_and_dump
 
 
@@ -103,7 +105,7 @@ def test_nested_string_to_cls():
     nested_def = dumped["definitions"]["TestNamedNestedSchema"]
     nested_dmp = dumped["definitions"]["TestSchema"]["properties"]["nested"]
     assert nested_dmp["type"] == "object"
-    assert nested_def["properties"]["foo"]["format"] == "integer"
+    assert nested_def["properties"]["foo"]["type"] == "integer"
 
 
 def test_list():
@@ -431,9 +433,8 @@ def test_dumps_iterable_enums():
     assert dumped["definitions"]["TestSchema"]["properties"]["foo"] == {
         "enum": [v for v in mapping.values()],
         "enumNames": [k for k in mapping.keys()],
-        "format": "integer",
         "title": "foo",
-        "type": "number",
+        "type": "integer",
     }
 
 
@@ -506,3 +507,27 @@ def test_sorting_properties():
     properties_names = [k for k in keys]
 
     assert properties_names == ["d", "c", "a"]
+
+
+class TestIntegerField:
+    """
+    Regression tests for https://github.com/fuhrysteve/marshmallow-jsonschema/issues/117
+    """
+
+    class Foo(Schema):
+        bar = fields.Integer()
+
+    def test_schema_type(self):
+        schema = JSONSchema().dump(self.Foo())
+        bar_property = schema["definitions"]["Foo"]["properties"]["bar"]
+
+        assert bar_property["type"] == "integer"
+        assert "format" not in bar_property
+
+    def test_validation(self):
+        schema = JSONSchema().dump(self.Foo())
+
+        jsonschema.validate({"bar": 1}, schema)
+
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate({"bar": 1.1}, schema)
