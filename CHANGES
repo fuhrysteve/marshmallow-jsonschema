@@ -3,6 +3,7 @@
       Python >= 3.6 and marshmallow >= 3 are now required!
       Python 3.5 should still work - no breaking changes yet,
       it just isn't a part of the build anymore.
+    - add optional support for marshmallow_enum and marshmallow_union.
 
 0.10.0 (2020-03-03)
     - added ReactJsonSchemaFormJSONSchema extension
