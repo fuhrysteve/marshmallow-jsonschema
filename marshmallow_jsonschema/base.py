@@ -252,6 +252,14 @@ class JSONSchema(Schema):
                 continue
             schema[md_key] = md_val
 
+        if field.allow_none:
+            schema = {
+                "anyOf": [
+                    schema, 
+                    {"type": "null"}
+                ]
+            }
+
         if field.many:
             schema = {
                 "type": "array" if field.required else ["array", "null"],
