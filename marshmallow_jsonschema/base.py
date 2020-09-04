@@ -241,7 +241,7 @@ class JSONSchema(Schema):
             self._nested_schema_classes.update(wrapped_nested._nested_schema_classes)
 
         # and the schema is just a reference to the def
-        schema = {"type": "object", "$ref": "#/definitions/{}".format(name)}
+        schema = {"$ref": "#/definitions/{}".format(name)}
 
         # NOTE: doubled up to maintain backwards compatibility
         metadata = field.metadata.get("metadata", {})

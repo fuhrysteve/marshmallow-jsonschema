@@ -102,7 +102,6 @@ def test_nested_string_to_cls():
 
     nested_def = dumped["definitions"]["TestNamedNestedSchema"]
     nested_dmp = dumped["definitions"]["TestSchema"]["properties"]["nested"]
-    assert nested_dmp["type"] == "object"
     assert nested_def["properties"]["foo"]["format"] == "integer"
 
 
