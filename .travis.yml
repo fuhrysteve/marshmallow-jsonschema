@@ -7,10 +7,10 @@ matrix:
   include:
   # Separate job for linting
     - os: linux
-      python: "3.9"
+      python: "3.9-dev"
       env: TOXENV=lint
     - os: linux
-      python: "3.9"
+      python: "3.9-dev"
     - os: linux
       python: "3.8"
     - os: linux
