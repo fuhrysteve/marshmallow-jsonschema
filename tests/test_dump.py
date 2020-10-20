@@ -536,6 +536,24 @@ def test_enum_based():
     assert received_enum_values == ["value_1", "value_2", "value_3"]
 
 
+def test_enum_based_load_dump_value():
+    class TestEnum(Enum):
+        value_1 = 0
+        value_2 = 1
+        value_3 = 2
+
+    class TestSchema(Schema):
+        enum_prop = EnumField(TestEnum, by_value=True)
+
+    # Should be sorting of fields
+    schema = TestSchema()
+
+    json_schema = JSONSchema()
+
+    with pytest.raises(NotImplementedError):
+        validate_and_dump(json_schema.dump(schema))
+
+
 def test_union_based():
     class TestNestedSchema(Schema):
         field_1 = fields.String()
