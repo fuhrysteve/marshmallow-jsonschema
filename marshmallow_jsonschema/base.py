@@ -138,7 +138,7 @@ class JSONSchema(Schema):
         self.nested = kwargs.pop("nested", False)
         self.props_ordered = kwargs.pop("props_ordered", False)
         setattr(self.opts, "ordered", self.props_ordered)
-        super(JSONSchema, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def get_properties(self, obj):
         """Fill out properties field."""
@@ -314,7 +314,7 @@ class JSONSchema(Schema):
     def dump(self, obj, **kwargs):
         """Take obj for later use: using class name to namespace definition."""
         self.obj = obj
-        return super(JSONSchema, self).dump(obj, **kwargs)
+        return super().dump(obj, **kwargs)
 
     @post_dump
     def wrap(self, data, **_):
