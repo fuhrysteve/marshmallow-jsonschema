@@ -1,5 +1,9 @@
+from enum import Enum
+
 import pytest
 from marshmallow import Schema, fields, validate
+from marshmallow_enum import EnumField
+from marshmallow_union import Union
 
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
 from . import UserSchema, validate_and_dump
@@ -506,3 +510,101 @@ def test_sorting_properties():
     properties_names = [k for k in keys]
 
     assert properties_names == ["d", "c", "a"]
+
+
+def test_enum_based():
+    class TestEnum(Enum):
+        value_1 = 0
+        value_2 = 1
+        value_3 = 2
+
+    class TestSchema(Schema):
+        enum_prop = EnumField(TestEnum)
+
+    # Should be sorting of fields
+    schema = TestSchema()
+
+    json_schema = JSONSchema()
+    data = json_schema.dump(schema)
+
+    assert (
+        data["definitions"]["TestSchema"]["properties"]["enum_prop"]["type"] == "string"
+    )
+    received_enum_values = sorted(
+        data["definitions"]["TestSchema"]["properties"]["enum_prop"]["enum"]
+    )
+    assert received_enum_values == ["value_1", "value_2", "value_3"]
+
+
+def test_enum_based_load_dump_value():
+    class TestEnum(Enum):
+        value_1 = 0
+        value_2 = 1
+        value_3 = 2
+
+    class TestSchema(Schema):
+        enum_prop = EnumField(TestEnum, by_value=True)
+
+    # Should be sorting of fields
+    schema = TestSchema()
+
+    json_schema = JSONSchema()
+
+    with pytest.raises(NotImplementedError):
+        validate_and_dump(json_schema.dump(schema))
+
+
+def test_union_based():
+    class TestNestedSchema(Schema):
+        field_1 = fields.String()
+        field_2 = fields.Integer()
+
+    class TestSchema(Schema):
+        union_prop = Union(
+            [fields.String(), fields.Integer(), fields.Nested(TestNestedSchema)]
+        )
+
+    # Should be sorting of fields
+    schema = TestSchema()
+
+    json_schema = JSONSchema()
+    data = json_schema.dump(schema)
+
+    # Expect only the `anyOf` key
+    assert "anyOf" in data["definitions"]["TestSchema"]["properties"]["union_prop"]
+    assert len(data["definitions"]["TestSchema"]["properties"]["union_prop"]) == 1
+
+    string_schema = {"type": "string", "title": ""}
+    integer_schema = {"type": "string", "title": ""}
+    referenced_nested_schema = {
+        "type": "object",
+        "$ref": "#/definitions/TestNestedSchema",
+    }
+    actual_nested_schema = {
+        "type": "object",
+        "properties": {
+            "field_1": {"type": "string", "title": "field_1"},
+            "field_2": {"type": "number", "title": "field_2", "format": "integer"},
+        },
+        "additionalProperties": False,
+    }
+
+    assert (
+        string_schema
+        in data["definitions"]["TestSchema"]["properties"]["union_prop"]["anyOf"]
+    )
+    assert (
+        integer_schema
+        in data["definitions"]["TestSchema"]["properties"]["union_prop"]["anyOf"]
+    )
+    assert (
+        referenced_nested_schema
+        in data["definitions"]["TestSchema"]["properties"]["union_prop"]["anyOf"]
+    )
+
+    assert data["definitions"]["TestNestedSchema"] == actual_nested_schema
+
+    # Expect three possible schemas for the union type
+    assert (
+        len(data["definitions"]["TestSchema"]["properties"]["union_prop"]["anyOf"]) == 3
+    )

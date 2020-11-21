@@ -2,5 +2,8 @@ coverage>=5.2.1
 jsonschema>=3.2
 pytest>=6.0.1
 pytest-cov
+# Optional installs for the wheel, but always required for tests
+marshmallow-enum
+marshmallow-union
 
 pre-commit~=2.6
