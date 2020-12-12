@@ -196,6 +196,13 @@ class JSONSchema(Schema):
 
         if isinstance(field, fields.List):
             json_schema["items"] = self._get_schema_for_field(obj, field.inner)
+
+        if isinstance(field, fields.Dict):
+            json_schema["additionalProperties"] = (
+                self._get_schema_for_field(obj, field.value_field)
+                if field.value_field
+                else {}
+            )
         return json_schema
 
     def _get_enum_values(self, field):

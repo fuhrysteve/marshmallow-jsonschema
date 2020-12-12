@@ -146,6 +146,59 @@ def test_list_nested():
     assert "InnerSchema" in item_schema["$ref"]
 
 
+def test_dict():
+    class DictSchema(Schema):
+        foo = fields.Dict()
+
+    schema = DictSchema()
+    dumped = validate_and_dump(schema)
+
+    nested_json = dumped["definitions"]["DictSchema"]["properties"]["foo"]
+
+    assert nested_json["type"] == "object"
+    assert "additionalProperties" in nested_json
+
+    item_schema = nested_json["additionalProperties"]
+    assert item_schema == {}
+
+
+def test_dict_with_value_field():
+    class DictSchema(Schema):
+        foo = fields.Dict(keys=fields.String, values=fields.Integer)
+
+    schema = DictSchema()
+    dumped = validate_and_dump(schema)
+
+    nested_json = dumped["definitions"]["DictSchema"]["properties"]["foo"]
+
+    assert nested_json["type"] == "object"
+    assert "additionalProperties" in nested_json
+
+    item_schema = nested_json["additionalProperties"]
+    assert item_schema["type"] == "number"
+
+
+def test_dict_with_nested_value_field():
+    class InnerSchema(Schema):
+        foo = fields.Integer(required=True)
+
+    class DictSchema(Schema):
+        bar = fields.Dict(keys=fields.String, values=fields.Nested(InnerSchema))
+
+    schema = DictSchema()
+    dumped = validate_and_dump(schema)
+
+    nested_json = dumped["definitions"]["DictSchema"]["properties"]["bar"]
+
+    assert nested_json["type"] == "object"
+    assert "additionalProperties" in nested_json
+
+    item_schema = nested_json["additionalProperties"]
+    assert item_schema["type"] == "object"
+
+    assert "InnerSchema" in item_schema["$ref"]
+
+
 def test_deep_nested():
     """Test that deep nested schemas are in definitions."""
 
