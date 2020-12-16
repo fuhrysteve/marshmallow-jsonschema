@@ -287,7 +287,9 @@ class JSONSchema(Schema):
         # If this is not a schema we've seen, and it's not this schema (checking this for recursive schemas),
         # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
-            wrapped_nested = self.__class__(nested=True)
+            wrapped_nested = self.__class__(
+                nested=True, props_ordered=self.props_ordered
+            )
             wrapped_dumped = wrapped_nested.dump(nested_instance)
 
             wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
