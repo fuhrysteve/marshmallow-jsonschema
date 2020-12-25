@@ -3,6 +3,11 @@
       Python >= 3.6 and marshmallow >= 3 are now required!
       Python 3.5 should still work - no breaking changes yet,
       it just isn't a part of the build anymore.
+    - add optional support for marshmallow_enum and marshmallow_union.
+    - Include type of Dict values #127
+      Add support for specifying the type of Dict values.
+      Prior to this change any information about the values in a
+      dict - particularly nested schemas - was lost.
 
 0.10.0 (2020-03-03)
     - added ReactJsonSchemaFormJSONSchema extension

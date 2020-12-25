@@ -1,6 +1,7 @@
 import datetime
 import decimal
 import uuid
+from enum import Enum
 from inspect import isclass
 
 from marshmallow import fields, missing, Schema, validate
@@ -8,6 +9,21 @@ from marshmallow.class_registry import get_class
 from marshmallow.decorators import post_dump
 
 from marshmallow import INCLUDE, EXCLUDE, RAISE
+
+try:
+    from marshmallow_union import Union
+
+    ALLOW_UNIONS = True
+except ImportError:
+    ALLOW_UNIONS = False
+
+try:
+    from marshmallow_enum import EnumField, LoadDumpOptions
+
+    ALLOW_ENUMS = True
+except ImportError:
+    ALLOW_ENUMS = False
+
 from .exceptions import UnsupportedValueError
 from .validation import handle_length, handle_one_of, handle_range, handle_regexp
 
@@ -32,6 +48,7 @@ PY_TO_JSON_TYPES_MAP = {
     float: {"type": "number", "format": "float"},
     int: {"type": "integer"},
     bool: {"type": "boolean"},
+    Enum: {"type": "string"},
 }
 
 # We use these pairs to get proper python type from marshmallow type.
@@ -64,6 +81,12 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = (
     # unknown marshmallow fields more cleanly.
     (fields.Nested, dict),
 )
+
+if ALLOW_ENUMS:
+    # We currently only support loading enum's from their names. So the possible
+    # values will always map to string in the JSONSchema
+    MARSHMALLOW_TO_PY_TYPES_PAIRS += ((EnumField, Enum),)
+
 
 FIELD_VALIDATORS = {
     validate.Length: handle_length,
@@ -115,7 +138,7 @@ class JSONSchema(Schema):
         self.nested = kwargs.pop("nested", False)
         self.props_ordered = kwargs.pop("props_ordered", False)
         setattr(self.opts, "ordered", self.props_ordered)
-        super(JSONSchema, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def get_properties(self, obj):
         """Fill out properties field."""
@@ -144,7 +167,7 @@ class JSONSchema(Schema):
 
     def _from_python_type(self, obj, field, pytype):
         """Get schema definition from python type."""
-        json_schema = {"title": field.attribute or field.name}
+        json_schema = {"title": field.attribute or field.name or ""}
 
         for key, val in PY_TO_JSON_TYPES_MAP[pytype].items():
             json_schema[key] = val
@@ -154,6 +177,9 @@ class JSONSchema(Schema):
 
         if field.default is not missing:
             json_schema["default"] = field.default
+
+        if ALLOW_ENUMS and isinstance(field, EnumField):
+            json_schema["enum"] = self._get_enum_values(field)
 
         if field.allow_none:
             previous_type = json_schema["type"]
@@ -170,7 +196,37 @@ class JSONSchema(Schema):
 
         if isinstance(field, fields.List):
             json_schema["items"] = self._get_schema_for_field(obj, field.inner)
+
+        if isinstance(field, fields.Dict):
+            json_schema["additionalProperties"] = (
+                self._get_schema_for_field(obj, field.value_field)
+                if field.value_field
+                else {}
+            )
         return json_schema
+
+    def _get_enum_values(self, field):
+        assert ALLOW_ENUMS and isinstance(field, EnumField)
+
+        if field.load_by == LoadDumpOptions.value:
+            # Python allows enum values to be almost anything, so it's easier to just load from the
+            # names of the enum's which will have to be strings.
+            raise NotImplementedError(
+                "Currently do not support JSON schema for enums loaded by value"
+            )
+
+        return [value.name for value in field.enum]
+
+    def _from_union_schema(self, obj, field):
+        """Get a union type schema. Uses anyOf to allow the value to be any of the provided sub fields"""
+        assert ALLOW_UNIONS and isinstance(field, Union)
+
+        return {
+            "anyOf": [
+                self._get_schema_for_field(obj, sub_field)
+                for sub_field in field._candidate_fields
+            ]
+        }
 
     def _get_python_type(self, field):
         """Get python type based on field subclass"""
@@ -187,11 +243,13 @@ class JSONSchema(Schema):
         elif "_jsonschema_type_mapping" in field.metadata:
             schema = field.metadata["_jsonschema_type_mapping"]
         else:
-            pytype = self._get_python_type(field)
             if isinstance(field, fields.Nested):
                 # Special treatment for nested fields.
                 schema = self._from_nested_schema(obj, field)
+            elif ALLOW_UNIONS and isinstance(field, Union):
+                schema = self._from_union_schema(obj, field)
             else:
+                pytype = self._get_python_type(field)
                 schema = self._from_python_type(obj, field, pytype)
         # Apply any and all validators that field may have
         for validator in field.validators:
@@ -263,7 +321,7 @@ class JSONSchema(Schema):
     def dump(self, obj, **kwargs):
         """Take obj for later use: using class name to namespace definition."""
         self.obj = obj
-        return super(JSONSchema, self).dump(obj, **kwargs)
+        return super().dump(obj, **kwargs)
 
     @post_dump
     def wrap(self, data, **_):

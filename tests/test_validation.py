@@ -1,6 +1,10 @@
+from enum import Enum
+
 import pytest
 from marshmallow import Schema, fields, validate
 from marshmallow.validate import OneOf, Range
+from marshmallow_enum import EnumField
+from marshmallow_union import Union
 
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
 from . import UserSchema, validate_and_dump
@@ -156,3 +160,32 @@ def test_custom_validator():
     props = dumped["definitions"]["TestSchema"]["properties"]
     assert props["test_field"]["minimum"] == 1
     assert props["test_field"]["maximum"] == 10
+
+
+def test_enum():
+    class TestEnum(Enum):
+        value_1 = 0
+        value_2 = 1
+
+    class TestSchema(Schema):
+        foo = EnumField(TestEnum)
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    foo_property = dumped["definitions"]["TestSchema"]["properties"]["foo"]
+    assert foo_property["enum"] == ["value_1", "value_2"]
+
+
+def test_union():
+    class TestSchema(Schema):
+        foo = Union([fields.String(), fields.Integer()])
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    foo_property = dumped["definitions"]["TestSchema"]["properties"]["foo"]
+    assert {"title": "", "type": "string"} in foo_property["anyOf"]
+    assert {"title": "", "type": "number", "format": "integer"} in foo_property["anyOf"]

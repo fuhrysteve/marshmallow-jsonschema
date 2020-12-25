@@ -171,9 +171,9 @@ class Colour(fields.Field):
 
     def _serialize(self, value, attr, obj):
         r, g, b = value
-        r = hex(r)[2:]
-        g = hex(g)[2:]
-        b = hex(b)[2:]
+        r = "%02X" % (r,)
+        g = "%02X" % (g,)
+        b = "%02X" % (b,)
         return '#' + r + g + b 
 
 class Gender(fields.String):

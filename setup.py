@@ -30,6 +30,11 @@ REQUIREMENTS_TESTS = open(
 REQUIREMENTS_TOX_FILE = "requirements-tox.txt"
 REQUIREMENTS_TOX = open(os.path.join(PROJECT_DIR, REQUIREMENTS_TOX_FILE)).readlines()
 
+EXTRAS_REQUIRE = {
+    "enum": ["marshmallow-enum"],
+    "union": ["marshmallow-union"],
+}
+
 
 setup(
     name="marshmallow-jsonschema",
@@ -45,6 +50,7 @@ setup(
     include_package_data=True,
     install_requires=REQUIREMENTS,
     tests_require=REQUIREMENTS_TESTS + REQUIREMENTS_TOX,
+    extras_require=EXTRAS_REQUIRE,
     license=read("LICENSE"),
     zip_safe=False,
     keywords=(
@@ -59,6 +65,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     test_suite="tests",
 )
