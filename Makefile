@@ -35,11 +35,21 @@ install_pandoc:
 	sudo apt install pandoc
 	pip install pypandoc
 
-pypitest:
-	python setup.py sdist upload -r pypitest
+sdist:
+	python setup.py sdist
 
-pypi:
-	python setup.py sdist upload -r pypi
+bdist_wheel:
+	pip install wheel
+	python setup.py bdist_wheel
+
+twine:
+	pip install twine
+
+pypitest: sdist bdist_wheel twine
+	twine upload -r pypitest dist/*
+
+pypi: sdist bdist_wheel twine
+	twine upload -r pypi dist/*
 
 
 clean_venv:
