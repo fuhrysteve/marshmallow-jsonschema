@@ -51,5 +51,7 @@ class ReactJsonSchemaFormJSONSchema(JSONSchema):
             yield k, v
 
         for field_name, field in obj.fields.items():
+            # NOTE: doubled up to maintain backwards compatibility
             metadata = field.metadata.get("metadata", {})
+            metadata.update(field.metadata)
             yield field_name, {k: v for k, v in metadata.items() if k.startswith("ui:")}
