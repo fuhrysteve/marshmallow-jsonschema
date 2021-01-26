@@ -1,3 +1,4 @@
+import io
 import os
 
 from setuptools import setup, find_packages
@@ -7,16 +8,11 @@ PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def read(fname):
-    with open(fname) as fp:
+    with io.open(fname) as fp:
         return fp.read()
 
 
-try:
-    import pypandoc
-
-    long_description = pypandoc.convert("README.md", "rst")
-except (IOError, ImportError, OSError):
-    long_description = read("README.md")
+long_description = read("README.md")
 
 
 REQUIREMENTS_FILE = "requirements.txt"
@@ -39,9 +35,10 @@ EXTRAS_REQUIRE = {
 setup(
     name="marshmallow-jsonschema",
     version="0.11.0",
-    description="JSON Schema Draft v4 (http://json-schema.org/)"
+    description="JSON Schema Draft v7 (http://json-schema.org/)"
     " formatting with marshmallow",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     author="Stephen Fuhry",
     author_email="fuhrysteve@gmail.com",
     url="https://github.com/fuhrysteve/marshmallow-jsonschema",
@@ -51,12 +48,13 @@ setup(
     install_requires=REQUIREMENTS,
     tests_require=REQUIREMENTS_TESTS + REQUIREMENTS_TOX,
     extras_require=EXTRAS_REQUIRE,
-    license=read("LICENSE"),
+    license="MIT License",
     zip_safe=False,
     keywords=(
         "marshmallow-jsonschema marshmallow schema serialization "
         "jsonschema validation"
     ),
+    python_requires=">=3.6",
     classifiers=[
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",

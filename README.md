@@ -25,7 +25,7 @@ pip install marshmallow-jsonschema
 #### Some Client tools can render forms using JSON Schema
 
 * [react-jsonschema-form](https://github.com/mozilla-services/react-jsonschema-form) (recommended)
- * See below extension for this excellent library!
+  * See below extension for this excellent library!
 * https://github.com/brutusin/json-forms
 * https://github.com/jdorn/json-editor
 * https://github.com/ulion/jsonform
@@ -48,7 +48,9 @@ user_schema = UserSchema()
 json_schema = JSONSchema()
 json_schema.dump(user_schema)
 ```
+
 Yields:
+
 ```python
 {'properties': {'age': {'format': 'integer',
                         'title': 'age',

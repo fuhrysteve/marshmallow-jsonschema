@@ -1,13 +1,16 @@
-0.11.0 (unreleased)
+0.11.0 (2021-01-26)
     - drop support for python 2 & 3.5, as well as marshmallow 2.
       Python >= 3.6 and marshmallow >= 3 are now required!
       Python 3.5 should still work - no breaking changes yet,
-      it just isn't a part of the build anymore.
+      it just isn't a part of the build anymore. #116
     - add optional support for marshmallow_enum and marshmallow_union.
     - Include type of Dict values #127
       Add support for specifying the type of Dict values.
       Prior to this change any information about the values in a
       dict - particularly nested schemas - was lost.
+    - fix ReactJsonSchemaFormJSONSchema for marshmallow>=3.10.0
+    - Change Makefile to build and upload wheel #131
+    - move from travisci to github actions #132
 
 0.10.0 (2020-03-03)
     - added ReactJsonSchemaFormJSONSchema extension
