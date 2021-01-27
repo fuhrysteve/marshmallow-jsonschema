@@ -56,7 +56,7 @@ PY_TO_JSON_TYPES_MAP = {
 # and then `fields.Number` might end up before `fields.Integer`.
 # As we perform sequential subclass check to determine proper Python type,
 # we can't let that happen.
-MARSHMALLOW_TO_PY_TYPES_PAIRS = (
+MARSHMALLOW_TO_PY_TYPES_PAIRS = [
     # This part of a mapping is carefully selected from marshmallow source code,
     # see marshmallow.BaseSchema.TYPE_MAPPING.
     (fields.String, str),
@@ -80,12 +80,12 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = (
     # This one is here just for completeness sake and to check for
     # unknown marshmallow fields more cleanly.
     (fields.Nested, dict),
-)
+]
 
 if ALLOW_ENUMS:
     # We currently only support loading enum's from their names. So the possible
     # values will always map to string in the JSONSchema
-    MARSHMALLOW_TO_PY_TYPES_PAIRS += ((EnumField, Enum),)
+    MARSHMALLOW_TO_PY_TYPES_PAIRS.append((EnumField, Enum))
 
 
 FIELD_VALIDATORS = {
