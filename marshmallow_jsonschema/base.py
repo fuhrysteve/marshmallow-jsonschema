@@ -3,10 +3,12 @@ import decimal
 import uuid
 from enum import Enum
 from inspect import isclass
+import typing
 
 from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.decorators import post_dump
+from marshmallow.utils import _Missing
 
 from marshmallow import INCLUDE, EXCLUDE, RAISE
 
@@ -56,7 +58,7 @@ PY_TO_JSON_TYPES_MAP = {
 # and then `fields.Number` might end up before `fields.Integer`.
 # As we perform sequential subclass check to determine proper Python type,
 # we can't let that happen.
-MARSHMALLOW_TO_PY_TYPES_PAIRS = (
+MARSHMALLOW_TO_PY_TYPES_PAIRS = [
     # This part of a mapping is carefully selected from marshmallow source code,
     # see marshmallow.BaseSchema.TYPE_MAPPING.
     (fields.String, str),
@@ -80,12 +82,12 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = (
     # This one is here just for completeness sake and to check for
     # unknown marshmallow fields more cleanly.
     (fields.Nested, dict),
-)
+]
 
 if ALLOW_ENUMS:
     # We currently only support loading enum's from their names. So the possible
     # values will always map to string in the JSONSchema
-    MARSHMALLOW_TO_PY_TYPES_PAIRS += ((EnumField, Enum),)
+    MARSHMALLOW_TO_PY_TYPES_PAIRS.append((EnumField, Enum))
 
 
 FIELD_VALIDATORS = {
@@ -96,7 +98,7 @@ FIELD_VALIDATORS = {
 }
 
 
-def _resolve_additional_properties(cls):
+def _resolve_additional_properties(cls) -> bool:
     meta = cls.Meta
 
     additional_properties = getattr(meta, "additional_properties", None)
@@ -126,7 +128,7 @@ class JSONSchema(Schema):
     type = fields.Constant("object")
     required = fields.Method("get_required")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         """Setup internal cache of nested fields, to prevent recursion.
 
         :param bool props_ordered: if `True` order of properties will be save as declare in class,
@@ -134,13 +136,13 @@ class JSONSchema(Schema):
                                    Note: For the marshmallow scheme, also need to enable
                                    ordering of fields too (via `class Meta`, attribute `ordered`).
         """
-        self._nested_schema_classes = {}
+        self._nested_schema_classes: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
         self.nested = kwargs.pop("nested", False)
         self.props_ordered = kwargs.pop("props_ordered", False)
         setattr(self.opts, "ordered", self.props_ordered)
         super().__init__(*args, **kwargs)
 
-    def get_properties(self, obj):
+    def get_properties(self, obj) -> typing.Dict[str, typing.Dict[str, typing.Any]]:
         """Fill out properties field."""
         properties = self.dict_class()
 
@@ -155,7 +157,7 @@ class JSONSchema(Schema):
 
         return properties
 
-    def get_required(self, obj):
+    def get_required(self, obj) -> typing.Union[typing.List[str], _Missing]:
         """Fill out required field."""
         required = []
 
@@ -165,7 +167,7 @@ class JSONSchema(Schema):
 
         return required or missing
 
-    def _from_python_type(self, obj, field, pytype):
+    def _from_python_type(self, obj, field, pytype) -> typing.Dict[str, typing.Any]:
         """Get schema definition from python type."""
         json_schema = {"title": field.attribute or field.name or ""}
 
@@ -205,7 +207,7 @@ class JSONSchema(Schema):
             )
         return json_schema
 
-    def _get_enum_values(self, field):
+    def _get_enum_values(self, field) -> typing.List[str]:
         assert ALLOW_ENUMS and isinstance(field, EnumField)
 
         if field.load_by == LoadDumpOptions.value:
@@ -217,7 +219,9 @@ class JSONSchema(Schema):
 
         return [value.name for value in field.enum]
 
-    def _from_union_schema(self, obj, field):
+    def _from_union_schema(
+        self, obj, field
+    ) -> typing.Dict[str, typing.List[typing.Any]]:
         """Get a union type schema. Uses anyOf to allow the value to be any of the provided sub fields"""
         assert ALLOW_UNIONS and isinstance(field, Union)
 
@@ -324,7 +328,7 @@ class JSONSchema(Schema):
         return super().dump(obj, **kwargs)
 
     @post_dump
-    def wrap(self, data, **_):
+    def wrap(self, data, **_) -> typing.Dict[str, typing.Any]:
         """Wrap this with the root schema definitions."""
         if self.nested:  # no need to wrap, will be in outer defs
             return data
