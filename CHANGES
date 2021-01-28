@@ -1,3 +1,5 @@
+0.11.1 (2021-01-28)
+    - adding typing support and mypy to the build
 0.11.0 (2021-01-26)
     - drop support for python 2 & 3.5, as well as marshmallow 2.
       Python >= 3.6 and marshmallow >= 3 are now required!
