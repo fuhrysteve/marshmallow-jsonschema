@@ -27,7 +27,13 @@ except ImportError:
     ALLOW_ENUMS = False
 
 from .exceptions import UnsupportedValueError
-from .validation import handle_length, handle_one_of, handle_range, handle_regexp
+from .validation import (
+    handle_equal,
+    handle_length,
+    handle_one_of,
+    handle_range,
+    handle_regexp,
+)
 
 __all__ = ("JSONSchema",)
 
@@ -91,6 +97,7 @@ if ALLOW_ENUMS:
 
 
 FIELD_VALIDATORS = {
+    validate.Equal: handle_equal,
     validate.Length: handle_length,
     validate.OneOf: handle_one_of,
     validate.Range: handle_range,
