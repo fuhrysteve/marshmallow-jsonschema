@@ -1,3 +1,5 @@
+0.12.0 (unreleased)
+    - Add support for validate.Equal #135
 0.11.1 (2021-01-28)
     - adding typing support and mypy to the build
 0.11.0 (2021-01-26)
@@ -13,7 +15,6 @@
     - fix ReactJsonSchemaFormJSONSchema for marshmallow>=3.10.0
     - Change Makefile to build and upload wheel #131
     - move from travisci to github actions #132
-
 0.10.0 (2020-03-03)
     - added ReactJsonSchemaFormJSONSchema extension
     - Add support for allow_none (#106 thanks @avilaton!)
