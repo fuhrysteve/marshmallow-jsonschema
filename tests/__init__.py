@@ -51,6 +51,7 @@ class UserSchema(Schema):
     )
     github = fields.Nested(GithubProfile)
     const = fields.String(validate=validate.Length(equal=50))
+    is_user = fields.Boolean(validate=validate.Equal(True))
 
 
 def _validate_schema(schema):

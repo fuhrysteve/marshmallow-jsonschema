@@ -75,6 +75,33 @@ def handle_one_of(schema, field, validator, parent_schema):
     return schema
 
 
+def handle_equal(schema, field, validator, parent_schema):
+    """Adds the validation logic for ``marshmallow.validate.Equal`` by setting
+    the JSONSchema `enum` property to value of the validator.
+
+    Args:
+        schema (dict): The original JSON schema we generated. This is what we
+            want to post-process.
+        field (fields.Field): The field that generated the original schema and
+            who this post-processor belongs to.
+        validator (marshmallow.validate.Equal): The validator attached to the
+            passed in field.
+        parent_schema (marshmallow.Schema): The Schema instance that the field
+            belongs to.
+
+    Returns:
+        dict: New JSON Schema that has been post processed and
+            altered.
+    """
+    # Deliberately using `enum` instead of `const` for increased compatibility.
+    #
+    # https://json-schema.org/understanding-json-schema/reference/generic.html#constant-values
+    # It should be noted that const is merely syntactic sugar for an enum with a single element [...]
+    schema["enum"] = [validator.comparable]
+
+    return schema
+
+
 def handle_range(schema, field, validator, parent_schema):
     """Adds validation logic for ``marshmallow.validate.Range``, setting the
     values appropriately ``fields.Number`` and it's subclasses.

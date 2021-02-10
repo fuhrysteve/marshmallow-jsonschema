@@ -10,6 +10,16 @@ from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
 from . import UserSchema, validate_and_dump
 
 
+def test_equal_validator():
+    schema = UserSchema()
+
+    dumped = validate_and_dump(schema)
+
+    assert dumped["definitions"]["UserSchema"]["properties"]["is_user"]["enum"] == [
+        True
+    ]
+
+
 def test_length_validator():
     schema = UserSchema()
 
