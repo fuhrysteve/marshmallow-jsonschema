@@ -85,6 +85,7 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = [
     (fields.Url, str),
     (fields.List, list),
     (fields.Number, decimal.Decimal),
+    (fields.IP, str),
     # This one is here just for completeness sake and to check for
     # unknown marshmallow fields more cleanly.
     (fields.Nested, dict),
