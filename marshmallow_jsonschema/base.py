@@ -161,7 +161,7 @@ class JSONSchema(Schema):
 
         for field_name, field in fields_items_sequence:
             schema = self._get_schema_for_field(obj, field)
-            properties[field.metadata.get("name") or field.name] = schema
+            properties[field.data_key or field.name] = schema
 
         return properties
 
@@ -171,7 +171,7 @@ class JSONSchema(Schema):
 
         for field_name, field in sorted(obj.fields.items()):
             if field.required:
-                required.append(field.name)
+                required.append(field.data_key or field.name)
 
         return required or missing
 
@@ -200,7 +200,7 @@ class JSONSchema(Schema):
         metadata.update(field.metadata)
 
         for md_key, md_val in metadata.items():
-            if md_key in ("metadata", "name"):
+            if md_key == "metadata":
                 continue
             json_schema[md_key] = md_val
 
@@ -318,7 +318,7 @@ class JSONSchema(Schema):
         metadata.update(field.metadata)
 
         for md_key, md_val in metadata.items():
-            if md_key in ("metadata", "name"):
+            if md_key == "metadata":
                 continue
             schema[md_key] = md_val
 
