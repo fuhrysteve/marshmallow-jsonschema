@@ -505,6 +505,21 @@ def test_required_excluded_when_empty():
     assert "required" not in dumped["definitions"]["TestSchema"]
 
 
+def test_required_uses_data_key():
+    class TestSchema(Schema):
+        optional_value = fields.String(data_key="opt", required=True)
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    test_schema_definition = dumped["definitions"]["TestSchema"]
+    assert "opt" in test_schema_definition["properties"]
+    assert "optional_value" == test_schema_definition["properties"]["opt"]["title"]
+    assert "required" in test_schema_definition
+    assert "opt" in test_schema_definition["required"]
+
+
 def test_datetime_based():
     class TestSchema(Schema):
         f_date = fields.Date()
