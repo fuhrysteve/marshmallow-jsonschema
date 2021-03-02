@@ -1,6 +1,7 @@
 0.12.0 (unreleased)
     - Add support for validate.Equal #135
     - Added fields.IP marshmallow field type to python types mapping #137
+    - Use data_key when available for property names #139
 0.11.1 (2021-01-28)
     - adding typing support and mypy to the build
 0.11.0 (2021-01-26)
