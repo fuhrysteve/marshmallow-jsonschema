@@ -67,12 +67,12 @@ PY_TO_JSON_TYPES_MAP = {
 MARSHMALLOW_TO_PY_TYPES_PAIRS = [
     # This part of a mapping is carefully selected from marshmallow source code,
     # see marshmallow.BaseSchema.TYPE_MAPPING.
+    (fields.UUID, uuid.UUID),
     (fields.String, str),
     (fields.Float, float),
     (fields.Raw, str),
     (fields.Boolean, bool),
     (fields.Integer, int),
-    (fields.UUID, uuid.UUID),
     (fields.Time, datetime.time),
     (fields.Date, datetime.date),
     (fields.TimeDelta, datetime.timedelta),
