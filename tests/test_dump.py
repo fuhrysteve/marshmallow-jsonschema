@@ -30,6 +30,16 @@ def test_default():
     assert props["id"]["default"] == "no-id"
 
 
+def test_uuid():
+    schema = UserSchema()
+
+    dumped = validate_and_dump(schema)
+
+    props = dumped["definitions"]["UserSchema"]["properties"]
+    assert props["uid"]["type"] == "string"
+    assert props["uid"]["format"] == "uuid"
+
+
 def test_metadata():
     """Metadata should be available in the field definition."""
 
