@@ -185,7 +185,7 @@ class JSONSchema(Schema):
             json_schema[key] = val
 
         if field.dump_only:
-            json_schema["readonly"] = True
+            json_schema["readOnly"] = True
 
         if field.default is not missing:
             json_schema["default"] = field.default
