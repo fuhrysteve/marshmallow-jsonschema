@@ -444,7 +444,7 @@ def test_readonly():
     assert dumped["definitions"]["TestSchema"]["properties"]["readonly_fld"] == {
         "title": "readonly_fld",
         "type": "string",
-        "readonly": True,
+        "readOnly": True,
     }
 
 
