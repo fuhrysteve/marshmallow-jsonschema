@@ -34,7 +34,7 @@ EXTRAS_REQUIRE = {
 
 setup(
     name="marshmallow-jsonschema",
-    version="0.11.1",
+    version="0.12.0",
     description="JSON Schema Draft v7 (http://json-schema.org/)"
     " formatting with marshmallow",
     long_description=long_description,

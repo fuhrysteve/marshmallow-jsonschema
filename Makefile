@@ -35,11 +35,11 @@ sdist:
 	python setup.py sdist
 
 bdist_wheel:
-	pip install wheel
+	pip install -U wheel
 	python setup.py bdist_wheel
 
 twine:
-	pip install twine
+	pip install -U twine
 
 pypitest: sdist bdist_wheel twine
 	twine upload -r pypitest dist/*
