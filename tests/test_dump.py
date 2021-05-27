@@ -116,7 +116,6 @@ def test_nested_string_to_cls():
 
     nested_def = dumped["definitions"]["TestNamedNestedSchema"]
     nested_dmp = dumped["definitions"]["TestSchema"]["properties"]["nested"]
-    assert nested_dmp["type"] == "object"
     assert nested_def["properties"]["foo"]["format"] == "integer"
 
 
@@ -480,6 +479,27 @@ def test_allow_none():
     assert dumped["definitions"]["TestSchema"]["properties"]["readonly_fld"] == {
         "title": "readonly_fld",
         "type": ["string", "null"],
+    }
+
+
+def test_allow_none_on_nested():
+    """A Nested field with allow_none set to True should result in anyOf"""
+    class ChildSchema(Schema):
+        id = fields.Integer(required=True)
+
+    class TestSchema(Schema):
+        id = fields.Integer(required=True)
+        nested_fld = fields.Nested(ChildSchema, allow_none=True)
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    assert dumped["definitions"]["TestSchema"]["properties"]["nested_fld"] == {
+        "anyOf": [
+            {'$ref': '#/definitions/ChildSchema'},
+            {"type": "null"}
+        ]
     }
 
 
