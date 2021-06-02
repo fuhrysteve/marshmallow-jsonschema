@@ -324,6 +324,9 @@ class JSONSchema(Schema):
                 continue
             schema[md_key] = md_val
 
+        if field.default is not missing and not callable(field.default):
+            schema["default"] = nested_instance.dump(field.default)
+
         if field.many:
             schema = {
                 "type": "array" if field.required else ["array", "null"],

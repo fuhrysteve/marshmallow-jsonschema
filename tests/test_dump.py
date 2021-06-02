@@ -307,6 +307,25 @@ def test_respect_dotted_exclude_for_nested_schema():
     assert "recursive" not in inner_props
 
 
+def test_respect_default_for_nested_schema():
+    class TestNestedSchema(Schema):
+        myfield = fields.String()
+        yourfield = fields.Integer(required=True)
+
+    nested_default = {"myfield": "myval", "yourfield": 1}
+
+    class TestSchema(Schema):
+        nested = fields.Nested(
+            TestNestedSchema, default=nested_default,
+        )
+        yourfield_nested = fields.Integer(required=True)
+
+    schema = TestSchema()
+    dumped = validate_and_dump(schema)
+    default = dumped["definitions"]["TestSchema"]["properties"]["nested"]["default"]
+    assert default == nested_default
+
+
 def test_nested_instance():
     """Should also work with nested schema instances"""
 
