@@ -187,7 +187,7 @@ class JSONSchema(Schema):
         if field.dump_only:
             json_schema["readOnly"] = True
 
-        if field.default is not missing:
+        if field.default is not missing and not callable(field.default):
             json_schema["default"] = field.default
 
         if ALLOW_ENUMS and isinstance(field, EnumField):

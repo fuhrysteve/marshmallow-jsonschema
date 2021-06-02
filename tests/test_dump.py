@@ -1,3 +1,4 @@
+import uuid
 from enum import Enum
 
 import pytest
@@ -28,6 +29,18 @@ def test_default():
 
     props = dumped["definitions"]["UserSchema"]["properties"]
     assert props["id"]["default"] == "no-id"
+
+
+def test_default_callable_not_serialized():
+    class TestSchema(Schema):
+        uid = fields.UUID(default=uuid.uuid4)
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    props = dumped["definitions"]["TestSchema"]["properties"]
+    assert "default" not in props["uid"]
 
 
 def test_uuid():
@@ -316,7 +329,8 @@ def test_respect_default_for_nested_schema():
 
     class TestSchema(Schema):
         nested = fields.Nested(
-            TestNestedSchema, default=nested_default,
+            TestNestedSchema,
+            default=nested_default,
         )
         yourfield_nested = fields.Integer(required=True)
 
