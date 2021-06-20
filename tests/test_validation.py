@@ -198,4 +198,4 @@ def test_union():
 
     foo_property = dumped["definitions"]["TestSchema"]["properties"]["foo"]
     assert {"title": "", "type": "string"} in foo_property["anyOf"]
-    assert {"title": "", "type": "number", "format": "integer"} in foo_property["anyOf"]
+    assert {"title": "", "type": "integer"} in foo_property["anyOf"]
