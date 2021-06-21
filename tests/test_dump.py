@@ -130,7 +130,7 @@ def test_nested_string_to_cls():
     nested_def = dumped["definitions"]["TestNamedNestedSchema"]
     nested_dmp = dumped["definitions"]["TestSchema"]["properties"]["nested"]
     assert nested_dmp["type"] == "object"
-    assert nested_def["properties"]["foo"]["format"] == "integer"
+    assert nested_def["properties"]["foo"]["type"] == "integer"
 
 
 def test_list():
@@ -198,7 +198,7 @@ def test_dict_with_value_field():
     assert "additionalProperties" in nested_json
 
     item_schema = nested_json["additionalProperties"]
-    assert item_schema["type"] == "number"
+    assert item_schema["type"] == "integer"
 
 
 def test_dict_with_nested_value_field():
@@ -531,9 +531,8 @@ def test_dumps_iterable_enums():
     assert dumped["definitions"]["TestSchema"]["properties"]["foo"] == {
         "enum": [v for v in mapping.values()],
         "enumNames": [k for k in mapping.keys()],
-        "format": "integer",
         "title": "foo",
-        "type": "number",
+        "type": "integer",
     }
 
 
@@ -695,7 +694,7 @@ def test_union_based():
         "type": "object",
         "properties": {
             "field_1": {"type": "string", "title": "field_1"},
-            "field_2": {"type": "number", "title": "field_2", "format": "integer"},
+            "field_2": {"type": "integer", "title": "field_2"},
         },
         "additionalProperties": False,
     }

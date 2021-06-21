@@ -54,7 +54,7 @@ PY_TO_JSON_TYPES_MAP = {
     set: {"type": "array"},
     tuple: {"type": "array"},
     float: {"type": "number", "format": "float"},
-    int: {"type": "number", "format": "integer"},
+    int: {"type": "integer"},
     bool: {"type": "boolean"},
     Enum: {"type": "string"},
 }
