@@ -3,6 +3,7 @@
       - The default value for nested fields wasn't serialized.
       - The default value for other fields may be a callable and in that case it shouldn't be emitted into the schema.
     - set int to "integer" instead of "number" #152
+    - Added fields.IPInterface marshmallow field type to python types mapping #155
 0.12.0 (2021-05-22)
     - Add support for validate.Equal #135
     - Added fields.IP marshmallow field type to python types mapping #137
