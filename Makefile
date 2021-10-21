@@ -31,7 +31,12 @@ test:
 test_coverage:
 	pytest --cov-report html --cov-config .coveragerc --cov $(PROJECT)
 
-sdist:
+clean_build_and_dist:
+	if [ -d build/ ]; then \
+		rm -rf build/ dist/ ; \
+	fi
+
+sdist: clean_build_and_dist
 	python setup.py sdist
 
 bdist_wheel:
