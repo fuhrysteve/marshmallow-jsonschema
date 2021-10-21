@@ -1,9 +1,13 @@
-0.13.0 (unreleased)
+0.13.0 (2021-10-21)
     - Fixes to field default #151
       - The default value for nested fields wasn't serialized.
       - The default value for other fields may be a callable and in that case it shouldn't be emitted into the schema.
     - set int to "integer" instead of "number" #152
     - Added fields.IPInterface marshmallow field type to python types mapping #155
+    - 0.13.x is planned to be the last major release to officially support python 3.6
+      which is EOL in December 2021
+    - minimum supported version of marshmallow is currently 3.11.0 (technically this was
+      true as of 0.12.0 because of the use of fields.IPInterface
 0.12.0 (2021-05-22)
     - Add support for validate.Equal #135
     - Added fields.IP marshmallow field type to python types mapping #137

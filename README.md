@@ -16,7 +16,7 @@ or mobile device).
 
 #### Installation
 
-Requires python>=3.6 and marshmallow>=3. (For python 2 & marshmallow 2 support, please use marshmallow-jsonschema<0.11)
+Requires python>=3.6 and marshmallow>=3.11. (For python 2 & marshmallow 2 support, please use marshmallow-jsonschema<0.11)
 
 ```
 pip install marshmallow-jsonschema
