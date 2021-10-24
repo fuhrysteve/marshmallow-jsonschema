@@ -2,11 +2,13 @@ import uuid
 from enum import Enum
 
 import pytest
+import jsonschema
 from marshmallow import Schema, fields, validate
 from marshmallow_enum import EnumField
 from marshmallow_union import Union
 
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
+
 from . import UserSchema, validate_and_dump
 
 
@@ -621,6 +623,29 @@ def test_sorting_properties():
 
     assert properties_names == ["d", "c", "a"]
 
+
+class TestIntegerField:
+    """
+    Regression tests for https://github.com/fuhrysteve/marshmallow-jsonschema/issues/117
+    """
+
+    class Foo(Schema):
+        bar = fields.Integer()
+
+    def test_schema_type(self):
+        schema = JSONSchema().dump(self.Foo())
+        bar_property = schema["definitions"]["Foo"]["properties"]["bar"]
+
+        assert bar_property["type"] == "integer"
+        assert "format" not in bar_property
+
+    def test_validation(self):
+        schema = JSONSchema().dump(self.Foo())
+
+        jsonschema.validate({"bar": 1}, schema)
+
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate({"bar": 1.1}, schema)
 
 def test_enum_based():
     class TestEnum(Enum):
