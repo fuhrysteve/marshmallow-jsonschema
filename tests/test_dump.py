@@ -133,6 +133,32 @@ def test_nested_string_to_cls():
     assert nested_def["properties"]["foo"]["type"] == "integer"
 
 
+def test_nested_context():
+    class TestNestedSchema(Schema):
+        def __init__(self, *args, **kwargs):
+            if kwargs.get("context", {}).get("hide", False):
+                kwargs["exclude"] = ["foo"]
+            super().__init__(*args, **kwargs)
+
+        foo = fields.Integer(required=True)
+        bar = fields.Integer(required=True)
+
+    class TestSchema(Schema):
+        bar = fields.Nested(TestNestedSchema)
+
+    schema = TestSchema()
+    dumped_show = validate_and_dump(schema)
+
+    schema = TestSchema(context={"hide": True})
+    dumped_hide = validate_and_dump(schema)
+
+    nested_show = dumped_show["definitions"]["TestNestedSchema"]["properties"]
+    nested_hide = dumped_hide["definitions"]["TestNestedSchema"]["properties"]
+
+    assert "bar" in nested_show and "foo" in nested_show
+    assert "bar" in nested_hide and "foo" not in nested_hide
+
+
 def test_list():
     class ListSchema(Schema):
         foo = fields.List(fields.String(), required=True)
