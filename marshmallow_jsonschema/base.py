@@ -292,7 +292,7 @@ class JSONSchema(Schema):
             only = field.only
             exclude = field.exclude
             nested_cls = nested
-            nested_instance = nested(only=only, exclude=exclude)
+            nested_instance = nested(only=only, exclude=exclude, context=obj.context)
         else:
             nested_cls = nested.__class__
             name = nested_cls.__name__
