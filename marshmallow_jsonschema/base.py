@@ -221,13 +221,6 @@ class JSONSchema(Schema):
     def _get_enum_values(self, field) -> typing.List[str]:
         assert ALLOW_ENUMS and isinstance(field, EnumField)
 
-        if field.load_by == LoadDumpOptions.value:
-            # Python allows enum values to be almost anything, so it's easier to just load from the
-            # names of the enum's which will have to be strings.
-            raise NotImplementedError(
-                "Currently do not support JSON schema for enums loaded by value"
-            )
-
         return [value.name for value in field.enum]
 
     def _from_union_schema(
