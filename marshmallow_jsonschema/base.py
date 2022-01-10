@@ -90,6 +90,7 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = [
     # This one is here just for completeness sake and to check for
     # unknown marshmallow fields more cleanly.
     (fields.Nested, dict),
+    (fields.Tuple, tuple),
 ]
 
 if ALLOW_ENUMS:
