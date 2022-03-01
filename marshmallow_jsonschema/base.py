@@ -254,7 +254,7 @@ class JSONSchema(Schema):
     def _get_schema_for_field(self, obj, field):
         """Get schema and validators for field."""
         if hasattr(field, "_jsonschema_type_mapping"):
-            schema = field._jsonschema_type_mapping()
+            schema = field._jsonschema_type_mapping(self, obj)
         elif "_jsonschema_type_mapping" in field.metadata:
             schema = field.metadata["_jsonschema_type_mapping"]
         else:
