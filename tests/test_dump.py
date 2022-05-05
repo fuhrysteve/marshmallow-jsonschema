@@ -454,7 +454,7 @@ def test_unknown_typed_field_throws_valueerror():
 
 def test_unknown_typed_field():
     class Colour(fields.Field):
-        def _jsonschema_type_mapping(self, json_schema, obj):
+        def _jsonschema_type_mapping(self):
             return {"type": "string"}
 
         def _serialize(self, value, attr, obj):

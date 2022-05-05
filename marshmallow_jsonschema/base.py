@@ -2,7 +2,7 @@ import datetime
 import decimal
 import uuid
 from enum import Enum
-from inspect import isclass
+from inspect import isclass, signature
 import typing
 
 from marshmallow import fields, missing, Schema, validate
@@ -254,7 +254,15 @@ class JSONSchema(Schema):
     def _get_schema_for_field(self, obj, field):
         """Get schema and validators for field."""
         if hasattr(field, "_jsonschema_type_mapping"):
-            schema = field._jsonschema_type_mapping(self, obj)
+            sig = signature(field._jsonschema_type_mapping)
+            num_args = len(sig.parameters)
+            if num_args == 2:
+                # pass down extra context to nested field of
+                # this schema and obj context if the implementer
+                # explicitly expects it
+                schema = field._jsonschema_type_mapping(self, obj)
+            else:
+                schema = field._jsonschema_type_mapping()
         elif "_jsonschema_type_mapping" in field.metadata:
             schema = field.metadata["_jsonschema_type_mapping"]
         else:
