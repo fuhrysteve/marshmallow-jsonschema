@@ -744,3 +744,26 @@ def test_union_based():
     assert (
         len(data["definitions"]["TestSchema"]["properties"]["union_prop"]["anyOf"]) == 3
     )
+
+def test_recursive_custom_field():
+    class NoOpWrapper(fields.Field):
+        def __init__(self, field):
+            self.field = field
+            super().__init__()
+
+        def _jsonschema_type_mapping(self, json_schema, obj):
+            field_schema = json_schema._get_schema_for_field(obj, self.field)
+            return field_schema
+
+    class ContrivedSchema(Schema):
+        recursive = NoOpWrapper(
+            fields.Nested("ContrivedSchema"),
+        )
+
+    schema = ContrivedSchema()
+    dumped = validate_and_dump(schema)
+
+    assert dumped["definitions"]["ContrivedSchema"]["properties"]["recursive"] == {
+        "type": "object",
+        "$ref": "#/definitions/ContrivedSchema"
+    }

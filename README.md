@@ -176,7 +176,7 @@ class Colour(fields.Field):
         r = "%02X" % (r,)
         g = "%02X" % (g,)
         b = "%02X" % (b,)
-        return '#' + r + g + b 
+        return '#' + r + g + b
 
 class Gender(fields.String):
     def _jsonschema_type_mapping(self):
@@ -194,6 +194,44 @@ class UserSchema(Schema):
 schema = UserSchema()
 json_schema = JSONSchema()
 json_schema.dump(schema)
+```
+
+##### Corner Case: Recursive Custom Types with Custom Containers
+
+marshmallow-jsonschema supports recursive custom types, and it supports the case where recursion
+occurs through a container, such as here where a `Colour` contains a list of its complements
+
+```python
+class Colour(Schema):
+    complements = fields.List(
+        fields.Nested("Colour")
+    )
+```
+
+Marshmallow built-in container types like `List` and `Tuple` are supported, as well as
+the marshmallow-union extension. *However* if you define a custom container yourself, you'll
+need to give your custom container's `_jsonschema_type_mapping` some additional context
+to properly recognize the recusive relationship. Here's a contrived example where we used a
+custom wrapper to hold complementary colours:
+
+```python
+class Complements(fields.Field):
+    complements: fields.List
+
+    def __init__(self, field):
+        self.complements = fields.List(field)
+        super().__init__()
+
+    # accept extra arguments here so this class can render
+    # a recursive $ref: #/definitions/Colour
+    def _jsonschema_type_mapping(self, json_schema, obj):
+        field_schema = json_schema._get_schema_for_field(obj, self.complements)
+        return field_schema
+
+class Colour(Schema):
+    complements = Complements(
+        fields.Nested("Colour")
+    )
 ```
 
 
