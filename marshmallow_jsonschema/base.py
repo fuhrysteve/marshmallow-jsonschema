@@ -188,8 +188,8 @@ class JSONSchema(Schema):
         if field.dump_only:
             json_schema["readOnly"] = True
 
-        if field.default is not missing and not callable(field.default):
-            json_schema["default"] = field.default
+        if field.dump_default is not missing and not callable(field.dump_default):
+            json_schema["default"] = field.dump_default
 
         if ALLOW_ENUMS and isinstance(field, EnumField):
             json_schema["enum"] = self._get_enum_values(field)
@@ -325,8 +325,8 @@ class JSONSchema(Schema):
                 continue
             schema[md_key] = md_val
 
-        if field.default is not missing and not callable(field.default):
-            schema["default"] = nested_instance.dump(field.default)
+        if field.dump_default is not missing and not callable(field.dump_default):
+            schema["default"] = nested_instance.dump(field.dump_default)
 
         if field.many:
             schema = {
