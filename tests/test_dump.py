@@ -7,6 +7,7 @@ from marshmallow_enum import EnumField
 from marshmallow_union import Union
 
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
+
 from . import UserSchema, validate_and_dump
 
 
