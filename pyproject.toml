@@ -1,2 +1,5 @@
 [tool.black]
 target-version = ['py36', 'py37', 'py38']
+
+[tool.isort]
+profile = "black"
