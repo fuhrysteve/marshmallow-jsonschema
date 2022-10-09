@@ -1,5 +1,6 @@
 from flask import Flask, jsonify
 from marshmallow import Schema, fields
+
 from marshmallow_jsonschema import JSONSchema
 
 app = Flask(__name__)

@@ -8,3 +8,4 @@ marshmallow-union
 mypy>=0.910
 
 pre-commit~=2.15
+isort
