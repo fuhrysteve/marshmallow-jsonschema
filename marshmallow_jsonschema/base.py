@@ -9,8 +9,21 @@ from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.decorators import post_dump
 from marshmallow.utils import _Missing
-
 from marshmallow import INCLUDE, EXCLUDE, RAISE
+# marshmallow.fields.Enum support has been added in marshmallow v3.18
+# see https://github.com/marshmallow-code/marshmallow/blob/dev/CHANGELOG.rst#3180-2022-09-15
+from marshmallow import __version__ as _MarshmallowVersion
+# the package "packaging" is a requirement of marshmallow itself => we don't need to install it separately
+# see https://github.com/marshmallow-code/marshmallow/blob/ddbe06f923befe754e213e03fb95be54e996403d/setup.py#L61
+from packaging.version import Version
+
+
+def marshmallow_version_supports_native_enums() -> bool:
+    """
+    returns true if and only if the version of marshmallow installed supports enums natively
+    """
+    return Version(_MarshmallowVersion) >= Version("3.18")
+
 
 try:
     from marshmallow_union import Union
@@ -20,11 +33,15 @@ except ImportError:
     ALLOW_UNIONS = False
 
 try:
-    from marshmallow_enum import EnumField, LoadDumpOptions
+    from marshmallow_enum import EnumField as MarshmallowEnumEnumField, LoadDumpOptions
 
-    ALLOW_ENUMS = True
+    ALLOW_MARSHMALLOW_ENUM_ENUMS = True
 except ImportError:
-    ALLOW_ENUMS = False
+    ALLOW_MARSHMALLOW_ENUM_ENUMS = False
+
+ALLOW_MARSHMALLOW_NATIVE_ENUMS = marshmallow_version_supports_native_enums()
+if ALLOW_MARSHMALLOW_NATIVE_ENUMS:
+    from marshmallow.fields import Enum as MarshmallowNativeEnumField
 
 from .exceptions import UnsupportedValueError
 from .validation import (
@@ -92,10 +109,12 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = [
     (fields.Nested, dict),
 ]
 
-if ALLOW_ENUMS:
+if ALLOW_MARSHMALLOW_NATIVE_ENUMS:
+    MARSHMALLOW_TO_PY_TYPES_PAIRS.append((MarshmallowNativeEnumField, Enum))
+if ALLOW_MARSHMALLOW_ENUM_ENUMS:
     # We currently only support loading enum's from their names. So the possible
     # values will always map to string in the JSONSchema
-    MARSHMALLOW_TO_PY_TYPES_PAIRS.append((EnumField, Enum))
+    MARSHMALLOW_TO_PY_TYPES_PAIRS.append((MarshmallowEnumEnumField, Enum))
 
 
 FIELD_VALIDATORS = {
@@ -191,8 +210,10 @@ class JSONSchema(Schema):
         if field.default is not missing and not callable(field.default):
             json_schema["default"] = field.default
 
-        if ALLOW_ENUMS and isinstance(field, EnumField):
-            json_schema["enum"] = self._get_enum_values(field)
+        if ALLOW_MARSHMALLOW_NATIVE_ENUMS and isinstance(field, MarshmallowNativeEnumField):
+            json_schema["enum"] = self._get_marshmallow_native_enum_values(field)
+        elif ALLOW_MARSHMALLOW_ENUM_ENUMS and isinstance(field, MarshmallowEnumEnumField):
+            json_schema["enum"] = self._get_marshmallow_enum_enum_values(field)
 
         if field.allow_none:
             previous_type = json_schema["type"]
@@ -218,10 +239,21 @@ class JSONSchema(Schema):
             )
         return json_schema
 
-    def _get_enum_values(self, field) -> typing.List[str]:
-        assert ALLOW_ENUMS and isinstance(field, EnumField)
+    def _get_marshmallow_enum_enum_values(self, field) -> typing.List[str]:
+        assert ALLOW_MARSHMALLOW_ENUM_ENUMS and isinstance(field, MarshmallowEnumEnumField)
 
         if field.load_by == LoadDumpOptions.value:
+            # Python allows enum values to be almost anything, so it's easier to just load from the
+            # names of the enum's which will have to be strings.
+            raise NotImplementedError(
+                "Currently do not support JSON schema for enums loaded by value"
+            )
+
+        return [value.name for value in field.enum]
+    def _get_marshmallow_native_enum_values(self, field) -> typing.List[str]:
+        assert ALLOW_MARSHMALLOW_NATIVE_ENUMS and isinstance(field, MarshmallowNativeEnumField)
+
+        if field.by_value:
             # Python allows enum values to be almost anything, so it's easier to just load from the
             # names of the enum's which will have to be strings.
             raise NotImplementedError(
