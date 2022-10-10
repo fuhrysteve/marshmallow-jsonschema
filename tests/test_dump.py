@@ -744,3 +744,23 @@ def test_union_based():
     assert (
         len(data["definitions"]["TestSchema"]["properties"]["union_prop"]["anyOf"]) == 3
     )
+
+def test_dumping_recursive_schema():
+    """
+    this reproduces issue https://github.com/fuhrysteve/marshmallow-jsonschema/issues/164
+    """
+    json_schema = JSONSchema()
+    def generate_recursive_schema_with_name():
+        class RecursiveSchema(Schema):
+            # when nesting recursively you can either refer the recursive schema by its name
+            nested_mwe_recursive = fields.Nested("RecursiveSchema")
+        return json_schema.dump(RecursiveSchema())
+    def generate_recursive_schema_with_lambda():
+        class RecursiveSchema(Schema):
+            # or you can use a lambda (as suggested in the marshmallow docs)
+            nested_mwe_recursive = fields.Nested(lambda: RecursiveSchema())
+        return json_schema.dump(RecursiveSchema())  # this shall _not_ raise an AttributeError
+
+    lambda_schema = generate_recursive_schema_with_lambda()
+    name_schema = generate_recursive_schema_with_name()
+    assert lambda_schema == name_schema
