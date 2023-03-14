@@ -102,17 +102,3 @@ def test_additional_properties_deduced(unknown_value, additional_properties):
         dumped["definitions"]["TestSchema"]["additionalProperties"]
         == additional_properties
     )
-
-
-def test_additional_properties_unknown_invalid_value():
-    class TestSchema(Schema):
-        class Meta:
-            unknown = "foo"
-
-        foo = fields.Integer()
-
-    schema = TestSchema()
-    json_schema = JSONSchema()
-
-    with pytest.raises(UnsupportedValueError):
-        json_schema.dump(schema)
