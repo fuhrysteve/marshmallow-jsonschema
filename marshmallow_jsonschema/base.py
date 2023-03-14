@@ -159,7 +159,10 @@ class JSONSchema(Schema):
         if self.props_ordered:
             fields_items_sequence = obj.fields.items()
         else:
-            fields_items_sequence = sorted(obj.fields.items())
+            if callable(obj):
+                fields_items_sequence = sorted(obj().fields.items())
+            else:
+                fields_items_sequence = sorted(obj.fields.items())
 
         for field_name, field in fields_items_sequence:
             schema = self._get_schema_for_field(obj, field)
@@ -172,8 +175,11 @@ class JSONSchema(Schema):
     def get_required(self, obj) -> typing.Union[typing.List[str], _Missing]:
         """Fill out required field."""
         required = []
-
-        for field_name, field in sorted(obj.fields.items()):
+        if callable(obj):
+            field_items_iterable = sorted(obj().fields.items())
+        else:
+            field_items_iterable = sorted(obj.fields.items())
+        for field_name, field in field_items_iterable:
             if field.required:
                 required.append(field.data_key or field.name)
 
@@ -294,6 +300,11 @@ class JSONSchema(Schema):
             exclude = field.exclude
             nested_cls = nested
             nested_instance = nested(only=only, exclude=exclude, context=obj.context)
+        elif callable(nested):
+            nested_instance = nested()
+            nested_type = type(nested_instance)
+            name = nested_type.__name__
+            nested_cls = nested_type.__class__
         else:
             nested_cls = nested.__class__
             name = nested_cls.__name__
