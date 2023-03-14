@@ -24,9 +24,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -U tox tox-gh-actions coveralls
         pip install -r requirements-tox.txt -r requirements-test.txt
-    - name: Run pre-commit
-      run: |
-        pre-commit run --all-files --show-diff-on-failure
     - name: Run tox
       run: |
         tox -e py
