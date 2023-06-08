@@ -153,6 +153,27 @@ if __name__ == '__main__':
 
 
 ### Advanced usage
+#### Customizing a field
+When defining a `field` in a `Schema`, it is possible to override the `field`'s JSONSchema properties using the `metadata` param.
+For example, to give a description to a field:
+
+```python
+class MySchema(Schema):
+    myfield = fields.String(metadata={'description': 'My description'})
+```
+
+As noted before, this also allows overriding as well as providing additional properties:
+
+```python
+>>>class MySchema(Schema):
+...    myfield = fields.String(metadata={'unkown_prop':'value', "type":"integer"}, required=True)
+>>>JSONSchema().dump(MySchema())
+{'$schema': 'http://json-schema.org/draft-07/schema#', 'definitions': {'MySchema': {'properties': {'myfield': {'title': 'myfield', 'type': 'integer', 'unkown_prop': 'value'}}, 'required': ['myfield'], 'type': 'object', 'additionalProperties': False}}, '$ref': '#/definitions/MySchema'}
+```
+
+In the above example, we added some unspecified field AND we also changed the type entirely.
+
+
 #### Custom Type support
 
 Simply add a `_jsonschema_type_mapping` method to your field
