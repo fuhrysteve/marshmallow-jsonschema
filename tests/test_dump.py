@@ -211,6 +211,17 @@ def test_dict():
     assert item_schema == {}
 
 
+def test_raw():
+    class RawSchema(Schema):
+        foo = fields.Raw()
+    
+    schema = RawSchema()
+    dumped = validate_and_dump(schema)
+
+    nested_json = dumped["definitions"]["RawSchema"]["properties"]["foo"]
+    assert "type" not in nested_json
+
+
 def test_dict_with_value_field():
     class DictSchema(Schema):
         foo = fields.Dict(keys=fields.String, values=fields.Integer)

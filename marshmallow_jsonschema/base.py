@@ -223,6 +223,8 @@ class JSONSchema(Schema):
                 if field.value_field
                 else {}
             )
+        if isinstance(field, fields.Raw):
+            json_schema.pop("type", None)
         return json_schema
 
     def _get_enum_values(self, field) -> typing.List[str]:
