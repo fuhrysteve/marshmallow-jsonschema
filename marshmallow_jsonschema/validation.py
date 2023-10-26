@@ -75,6 +75,41 @@ def handle_one_of(schema, field, validator, parent_schema):
     return schema
 
 
+def handle_any_of(schema, field, validator, parent_schema):
+    """Adds the validation logic for ``marshmallow.validate.ContainsOnly`` by setting
+    the JSONSchema `anyOf` property to the allowed choices in the validator.
+    Args:
+        schema (dict): The original JSON schema we generated. This is what we
+            want to post-process.
+        field (fields.Field): The field that generated the original schema and
+            who this post-processor belongs to.
+        validator (marshmallow.validate.ContainsOnly): The validator attached to the
+            passed in field.
+        parent_schema (marshmallow.Schema): The Schema instance that the field
+            belongs to.
+    Returns:
+        dict: New JSON Schema that has been post processed and
+            altered.
+    """
+    if schema["type"] != "array":
+        return schema
+
+    choices = field._serialize(validator.choices, field.name, None)
+    if not choices:
+        return schema
+
+    field_type = schema["items"].get("type", "string")
+
+    labels = validator.labels if validator.labels else choices
+    schema["items"]["anyOf"] = [
+        {"type": field_type, "title": label, "const": choice}
+        for choice, label in zip(choices, labels)
+    ]
+    schema["uniqueItems"] = True
+
+    return schema
+
+
 def handle_equal(schema, field, validator, parent_schema):
     """Adds the validation logic for ``marshmallow.validate.Equal`` by setting
     the JSONSchema `enum` property to value of the validator.

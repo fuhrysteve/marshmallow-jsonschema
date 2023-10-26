@@ -31,6 +31,7 @@ from .validation import (
     handle_equal,
     handle_length,
     handle_one_of,
+    handle_any_of,
     handle_range,
     handle_regexp,
 )
@@ -102,6 +103,7 @@ FIELD_VALIDATORS = {
     validate.Equal: handle_equal,
     validate.Length: handle_length,
     validate.OneOf: handle_one_of,
+    validate.ContainsOnly: handle_any_of,
     validate.Range: handle_range,
     validate.Regexp: handle_regexp,
 }
