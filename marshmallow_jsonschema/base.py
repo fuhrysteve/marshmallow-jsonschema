@@ -326,7 +326,7 @@ class JSONSchema(Schema):
             self._nested_schema_classes.update(wrapped_nested._nested_schema_classes)
 
         # and the schema is just a reference to the def
-        schema = {"type": "object", "$ref": "#/definitions/{}".format(name)}
+        schema = self._schema_base(name)
 
         # NOTE: doubled up to maintain backwards compatibility
         metadata = field.metadata.get("metadata", {})
@@ -347,6 +347,9 @@ class JSONSchema(Schema):
             }
 
         return schema
+
+    def _schema_base(self, name):
+        return {"type": "object", "$ref": "#/definitions/{}".format(name)}
 
     def dump(self, obj, **kwargs):
         """Take obj for later use: using class name to namespace definition."""
