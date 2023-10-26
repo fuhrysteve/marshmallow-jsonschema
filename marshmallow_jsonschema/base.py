@@ -149,6 +149,7 @@ class JSONSchema(Schema):
         self._nested_schema_classes: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
         self.nested = kwargs.pop("nested", False)
         self.props_ordered = kwargs.pop("props_ordered", False)
+        self.definitions_path = kwargs.pop("definitions_path", "definitions")
         setattr(self.opts, "ordered", self.props_ordered)
         super().__init__(*args, **kwargs)
 
@@ -326,7 +327,7 @@ class JSONSchema(Schema):
             self._nested_schema_classes.update(wrapped_nested._nested_schema_classes)
 
         # and the schema is just a reference to the def
-        schema = {"type": "object", "$ref": "#/definitions/{}".format(name)}
+        schema = {"type": "object", "$ref": "#/{}/{}".format(self.definitions_path, name)}
 
         # NOTE: doubled up to maintain backwards compatibility
         metadata = field.metadata.get("metadata", {})
@@ -367,7 +368,7 @@ class JSONSchema(Schema):
         self._nested_schema_classes[name] = data
         root = {
             "$schema": "http://json-schema.org/draft-07/schema#",
-            "definitions": self._nested_schema_classes,
-            "$ref": "#/definitions/{name}".format(name=name),
+            self.definitions_path: self._nested_schema_classes,
+            "$ref": "#/{path}/{name}".format(path=self.definitions_path, name=name),
         }
         return root
