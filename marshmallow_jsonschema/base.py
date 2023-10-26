@@ -154,7 +154,7 @@ class JSONSchema(Schema):
 
     def get_properties(self, obj) -> typing.Dict[str, typing.Dict[str, typing.Any]]:
         """Fill out properties field."""
-        properties = self.dict_class()
+        properties = obj.dict_class()
 
         if self.props_ordered:
             fields_items_sequence = obj.fields.items()
