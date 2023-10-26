@@ -3,12 +3,18 @@ from enum import Enum
 
 import pytest
 from marshmallow import Schema, fields, validate
-from marshmallow_enum import EnumField
+from marshmallow_enum import EnumField as MarshmallowEnumEnumField
 from marshmallow_union import Union
 
+import marshmallow_jsonschema
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
 from . import UserSchema, validate_and_dump
 
+TEST_MARSHMALLOW_NATIVE_ENUM = marshmallow_jsonschema.base.marshmallow_version_supports_native_enums()
+try:
+    from marshmallow.fields import Enum as MarshmallowNativeEnumField
+except ImportError:
+    assert TEST_MARSHMALLOW_NATIVE_ENUM is False
 
 def test_dump_schema():
     schema = UserSchema()
@@ -648,14 +654,14 @@ def test_sorting_properties():
     assert properties_names == ["d", "c", "a"]
 
 
-def test_enum_based():
+def test_marshmallow_enum_enum_based():
     class TestEnum(Enum):
         value_1 = 0
         value_2 = 1
         value_3 = 2
 
     class TestSchema(Schema):
-        enum_prop = EnumField(TestEnum)
+        enum_prop = MarshmallowEnumEnumField(TestEnum)
 
     # Should be sorting of fields
     schema = TestSchema()
@@ -671,15 +677,39 @@ def test_enum_based():
     )
     assert received_enum_values == ["value_1", "value_2", "value_3"]
 
-
-def test_enum_based_load_dump_value():
+def test_native_marshmallow_enum_based():
+    if not TEST_MARSHMALLOW_NATIVE_ENUM:
+        return
     class TestEnum(Enum):
         value_1 = 0
         value_2 = 1
         value_3 = 2
 
     class TestSchema(Schema):
-        enum_prop = EnumField(TestEnum, by_value=True)
+        enum_prop = MarshmallowNativeEnumField(TestEnum)
+
+    # Should be sorting of fields
+    schema = TestSchema()
+
+    json_schema = JSONSchema()
+    data = json_schema.dump(schema)
+
+    assert (
+        data["definitions"]["TestSchema"]["properties"]["enum_prop"]["type"] == "string"
+    )
+    received_enum_values = sorted(
+        data["definitions"]["TestSchema"]["properties"]["enum_prop"]["enum"]
+    )
+    assert received_enum_values == ["value_1", "value_2", "value_3"]
+
+def test_marshmallow_enum_enum_based_load_dump_value():
+    class TestEnum(Enum):
+        value_1 = 0
+        value_2 = 1
+        value_3 = 2
+
+    class TestSchema(Schema):
+        enum_prop = MarshmallowEnumEnumField(TestEnum, by_value=True)
 
     # Should be sorting of fields
     schema = TestSchema()
@@ -689,6 +719,24 @@ def test_enum_based_load_dump_value():
     with pytest.raises(NotImplementedError):
         validate_and_dump(json_schema.dump(schema))
 
+def test_native_marshmallow_enum_based_load_dump_value():
+    if not TEST_MARSHMALLOW_NATIVE_ENUM:
+        return
+    class TestEnum(Enum):
+        value_1 = 0
+        value_2 = 1
+        value_3 = 2
+
+    class TestSchema(Schema):
+        enum_prop = MarshmallowNativeEnumField(TestEnum, by_value=True)
+
+    # Should be sorting of fields
+    schema = TestSchema()
+
+    json_schema = JSONSchema()
+
+    with pytest.raises(NotImplementedError):
+        validate_and_dump(json_schema.dump(schema))
 
 def test_union_based():
     class TestNestedSchema(Schema):

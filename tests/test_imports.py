@@ -19,7 +19,7 @@ def test_import_marshmallow_enum(monkeypatch):
 
     base = importlib.reload(marshmallow_jsonschema.base)
 
-    assert not base.ALLOW_ENUMS
+    assert not base.ALLOW_MARSHMALLOW_ENUM_ENUMS
 
     monkeypatch.undo()
 
