@@ -42,6 +42,17 @@ def test_default_callable_not_serialized():
     props = dumped["definitions"]["TestSchema"]["properties"]
     assert "default" not in props["uid"]
 
+def test_default_callable_serialized():
+    class TestSchema(Schema):
+        uid = fields.UUID(default=lambda: str(uuid.uuid4()))
+
+    schema = TestSchema()
+
+    dumped = validate_and_dump(schema)
+
+    props = dumped["definitions"]["TestSchema"]["properties"]
+    assert "default" in props["uid"]
+
 
 def test_uuid():
     schema = UserSchema()

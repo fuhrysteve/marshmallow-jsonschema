@@ -1,5 +1,6 @@
 import datetime
 import decimal
+import json
 import uuid
 from enum import Enum
 from inspect import isclass
@@ -195,8 +196,13 @@ class JSONSchema(Schema):
         if field.dump_only:
             json_schema["readOnly"] = True
 
-        if field.default is not missing and not callable(field.default):
-            json_schema["default"] = field.default
+        if field.default is not missing:
+            if (not callable(field.default) and self._is_serializable(field.default)):
+                json_schema["default"] = field.default
+            else:
+                default_value = field.default()
+                if self._is_serializable(default_value):
+                    json_schema["default"] = default_value
 
         if ALLOW_ENUMS and isinstance(field, EnumField):
             json_schema["enum"] = self._get_enum_values(field)
@@ -224,6 +230,13 @@ class JSONSchema(Schema):
                 else {}
             )
         return json_schema
+
+    def _is_serializable(self, value):
+        try:
+            json.dumps(value)
+            return True
+        except TypeError:
+            return False
 
     def _get_enum_values(self, field) -> typing.List[str]:
         assert ALLOW_ENUMS and isinstance(field, EnumField)
