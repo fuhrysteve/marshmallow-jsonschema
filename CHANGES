@@ -1,3 +1,5 @@
+0.13.1-rc2 (2025-12-05)
+    - Break dependencu from setuptools
 0.13.0 (2021-10-21)
     - Fixes to field default #151
       - The default value for nested fields wasn't serialized.
