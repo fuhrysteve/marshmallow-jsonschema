@@ -1,3 +1,40 @@
+0.15.0 (2026-04-19)
+    Feature batch from the open-PR backlog. All changes are additive or
+    bug fixes; no public API removed or renamed. Python 3.9+ and
+    marshmallow >=3.13,<4 requirements are unchanged.
+
+    New:
+    - Emit schema-level `title` and `description` from `class Meta`.
+      Non-string values raise `UnsupportedValueError`. (#41, #99)
+    - Add `definitions_path` constructor kwarg (default `"definitions"`)
+      so the output can target OpenAPI's `#/components/schemas/...`
+      convention. Propagates to nested schemas. (#179)
+    - Honor `allow_none=True` on `Nested` fields: emits
+      `anyOf: [<nested>, {"type": "null"}]`. (#101, #121, #122)
+    - Apply `metadata={...}` and `dump_default` to fields that expose a
+      `_jsonschema_type_mapping`. Previously dropped silently. (#21)
+    - A custom field's `_jsonschema_type_mapping` can now optionally
+      accept `(json_schema, obj)` extra parameters to re-enter the
+      dumping machinery - useful for wrapper-style fields that need to
+      emit a `$ref` to a recursive schema. Zero-arg implementations
+      continue to work. (#165)
+    - Add a `ContainsOnly` validator handler: a `List` field with
+      `validate=ContainsOnly([...])` emits `items.anyOf: [{const}, ...]`
+      and `uniqueItems: true`. (#96)
+
+    Fixes:
+    - Propagate `props_ordered` from the outer JSONSchema into nested
+      schemas. Previously nested fields were always alphabetically
+      sorted regardless of the outer `props_ordered=True`. (#109, #129)
+    - Skip `default` emission when the value isn't JSON-serializable
+      (e.g. `dump_default=uuid.uuid4()` passing a UUID instance). The
+      old behavior produced a schema dict that crashed downstream
+      `json.dumps`. (motivated by #181)
+    - The Integer-type regression test from #118 finally landed.
+      (The underlying `int -> "integer"` mapping fix shipped in 0.13.0
+      via #152; this adds the `jsonschema.validate(...)` assertion that
+      guards against future drift.)
+
 0.14.0 (2026-04-19)
     This is primarily a maintenance release to unbreak installs on
     modern Python and marshmallow. It intentionally preserves public
