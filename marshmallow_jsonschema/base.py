@@ -140,7 +140,6 @@ def _resolve_additional_properties(cls) -> bool:
     elif unknown == INCLUDE:
         return True
     else:
-        # This is probably unreachable as of marshmallow 3.16.0
         raise UnsupportedValueError("Unknown value %s for `unknown`" % unknown)
 
 
