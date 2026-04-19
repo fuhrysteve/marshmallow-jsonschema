@@ -1,3 +1,12 @@
+unreleased
+    - Add support for `marshmallow.fields.Enum` (native Enum field added in
+      marshmallow 3.18). Existing `marshmallow_enum.EnumField` support is
+      preserved. #169, #170
+    - Internal: renamed `ALLOW_ENUMS` to `ALLOW_MARSHMALLOW_ENUM` for the
+      third-party package and added `ALLOW_NATIVE_ENUM` for the in-tree
+      field. `ALLOW_ENUMS` is retained as a backward-compatible alias
+      (True when either is active).
+
 0.13.0 (2021-10-21)
     - Fixes to field default #151
       - The default value for nested fields wasn't serialized.
