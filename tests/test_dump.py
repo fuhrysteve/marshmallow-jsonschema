@@ -648,6 +648,29 @@ def test_datetime_based():
     }
 
 
+def test_props_ordered_propagates_to_nested():
+    """props_ordered=True on the outer JSONSchema must apply to nested
+    schemas too. Regression for #109."""
+
+    class Inner(Schema):
+        z = fields.Str()
+        y = fields.Str()
+        x = fields.Str()
+
+    class Outer(Schema):
+        d = fields.Str()
+        c = fields.Str()
+        a = fields.Str()
+        nested = fields.Nested(Inner)
+
+    dumped = JSONSchema(props_ordered=True).dump(Outer())
+    outer_props = list(dumped["definitions"]["Outer"]["properties"].keys())
+    inner_props = list(dumped["definitions"]["Inner"]["properties"].keys())
+
+    assert outer_props == ["d", "c", "a", "nested"]
+    assert inner_props == ["z", "y", "x"]
+
+
 def test_sorting_properties():
     # Field declaration order is preserved by marshmallow itself; what we're
     # exercising here is JSONSchema's `props_ordered` flag, which gates whether
