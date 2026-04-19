@@ -1,14 +1,50 @@
-unreleased
-    - Add support for `marshmallow.fields.Enum` (native Enum field added in
-      marshmallow 3.18). Existing `marshmallow_enum.EnumField` support is
-      preserved. #169, #170
-    - Internal: renamed `ALLOW_ENUMS` to `ALLOW_MARSHMALLOW_ENUM` for the
-      third-party package and added `ALLOW_NATIVE_ENUM` for the in-tree
-      field. `ALLOW_ENUMS` is retained as a backward-compatible alias
-      (True when either is active).
-    - Replace deprecated `field.default` reads with `field.dump_default` to
-      silence `RemovedInMarshmallow4Warning`. Minimum supported marshmallow
-      is now 3.13. #158, #167
+0.14.0 (2026-04-19)
+    This is primarily a maintenance release to unbreak installs on
+    modern Python and marshmallow. It intentionally preserves public
+    API behavior; see the "Backward compatibility" notes below.
+
+    New:
+    - Add support for `marshmallow.fields.Enum`, the native Enum field
+      added in marshmallow 3.18. `marshmallow_enum.EnumField` support is
+      preserved; native Enum is preferred when both are present.
+      (#169, #170, #189)
+    - Factor out the `$ref` emitted for nested schemas into a
+      `_schema_base(name)` method so subclasses of `JSONSchema` can
+      override it (e.g. to target a JSON Schema draft other than
+      Draft-07). (#180)
+
+    Fixes / maintenance:
+    - Replace deprecated `pkg_resources.get_distribution` with
+      `importlib.metadata.version`. Removes the runtime dependency on
+      setuptools. (#182, #185)
+    - Pin `marshmallow<4` in requirements. marshmallow 4 removed the
+      private `_Missing` symbol we import, so every fresh install on a
+      machine without a pin was broken. A real marshmallow-4 port is
+      planned for a later release.
+    - Replace `field.default` reads with `field.dump_default` to silence
+      `RemovedInMarshmallow4Warning`. (#158, #167, #190)
+    - CI now tests Python 3.9 - 3.13 and uses current versions of
+      `actions/checkout` and `actions/setup-python`. The mypy workflow
+      was rewritten to actually install the project before type-checking
+      (it had been silently broken). (#183, #188)
+    - Housekeeping: delete dead CodeQL / OSSAR workflows and the
+      redundant `requirements-tox.txt`; rewrite `CONTRIBUTING.md` to
+      match reality; fix an `integer_schema` typo in the union test
+      that was silently passing on the wrong branch; scrub most of the
+      residual `RemovedInMarshmallow4Warning`s emitted by the test
+      suite; correct a stale `Yields` example in the README. (#192,
+      #193, #194)
+
+    Backward compatibility:
+    - Minimum supported Python is now 3.9. Python 3.6 / 3.7 / 3.8 are
+      end-of-life; `pkg_resources` → `importlib.metadata` also requires
+      Python 3.8+. Users on older interpreters should stay on 0.13.0.
+    - Minimum supported marshmallow is now 3.13 (for `dump_default`).
+      marshmallow 3.13 shipped in July 2021.
+    - `marshmallow_jsonschema.base.ALLOW_ENUMS` continues to mean
+      "`marshmallow_enum` is importable", matching its historical
+      semantic. The new `ALLOW_MARSHMALLOW_ENUM` is an alias for it, and
+      `ALLOW_NATIVE_ENUM` is a separate flag for the native Enum field.
 
 0.13.0 (2021-10-21)
     - Fixes to field default #151
