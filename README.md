@@ -23,7 +23,7 @@ pip install marshmallow-jsonschema
 
 #### Some Client tools can render forms using JSON Schema
 
-* [react-jsonschema-form](https://github.com/mozilla-services/react-jsonschema-form) (recommended)
+* [react-jsonschema-form](https://github.com/rjsf-team/react-jsonschema-form) (recommended)
   * See below extension for this excellent library!
 * https://github.com/brutusin/json-forms
 * https://github.com/jdorn/json-editor
@@ -50,16 +50,22 @@ json_schema.dump(user_schema)
 
 Yields:
 
-```python
-{'properties': {'age': {'format': 'integer',
-                        'title': 'age',
-                        'type': 'number'},
-                'birthday': {'format': 'date',
-                             'title': 'birthday',
-                             'type': 'string'},
-                'username': {'title': 'username', 'type': 'string'}},
- 'required': [],
- 'type': 'object'}
+```json
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "definitions": {
+        "UserSchema": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "age": {"title": "age", "type": "integer"},
+                "birthday": {"title": "birthday", "type": "string", "format": "date"},
+                "username": {"title": "username", "type": "string"}
+            }
+        }
+    },
+    "$ref": "#/definitions/UserSchema"
+}
 ```
 
 #### Nested Example
