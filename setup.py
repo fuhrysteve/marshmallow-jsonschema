@@ -3,7 +3,6 @@ import os
 
 from setuptools import setup, find_packages
 
-
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -54,17 +53,17 @@ setup(
         "marshmallow-jsonschema marshmallow schema serialization "
         "jsonschema validation"
     ),
-    python_requires=">=3.6",
+    python_requires=">=3.9",
     classifiers=[
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
     test_suite="tests",
 )
