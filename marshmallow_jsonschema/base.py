@@ -6,12 +6,26 @@ from enum import Enum
 from inspect import isclass, signature
 import typing
 
+from importlib.metadata import version as _pkg_version
+
 from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.decorators import post_dump
-from marshmallow.utils import _Missing
 
 from marshmallow import INCLUDE, EXCLUDE, RAISE
+
+# Major-version sniff so callers can branch on m3 vs m4 if they need to.
+# Used internally to gate features that the underlying marshmallow
+# release no longer provides (Schema(context=...), Schema.context, etc.).
+# marshmallow 3 exposed `__version__` directly; marshmallow 4 dropped it,
+# so read the installed distribution version instead.
+MARSHMALLOW_MAJOR = int(_pkg_version("marshmallow").split(".", 1)[0])
+
+# marshmallow 3.x exposed the private `_Missing` type on `marshmallow.utils`;
+# marshmallow 4.x removed it. Keep the runtime constant for any external
+# consumer that imported it from us in the past, but use `typing.Any` in
+# our own annotations so mypy is happy on both versions.
+_Missing = type(missing)
 
 try:
     from marshmallow_union import Union
@@ -218,7 +232,7 @@ class JSONSchema(Schema):
 
         return properties
 
-    def get_required(self, obj) -> typing.Union[typing.List[str], _Missing]:
+    def get_required(self, obj) -> typing.Union[typing.List[str], typing.Any]:
         """Fill out required field."""
         required = []
         if callable(obj):
@@ -400,7 +414,16 @@ class JSONSchema(Schema):
             only = field.only
             exclude = field.exclude
             nested_cls = nested
-            nested_instance = nested(only=only, exclude=exclude, context=obj.context)
+            # marshmallow 3 accepts `context` as a constructor kwarg and
+            # exposes it as a Schema attribute; marshmallow 4 removed both
+            # in favor of `contextvars.ContextVar`. Forward context on m3
+            # where possible and fall back gracefully on m4.
+            try:
+                nested_instance = nested(
+                    only=only, exclude=exclude, context=obj.context
+                )
+            except (AttributeError, TypeError):
+                nested_instance = nested(only=only, exclude=exclude)
         elif callable(nested):
             nested_instance = nested()
             nested_type = type(nested_instance)

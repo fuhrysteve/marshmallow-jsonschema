@@ -8,7 +8,7 @@ from marshmallow_enum import EnumField
 from marshmallow_union import Union
 
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
-from marshmallow_jsonschema.base import ALLOW_NATIVE_ENUM
+from marshmallow_jsonschema.base import ALLOW_NATIVE_ENUM, MARSHMALLOW_MAJOR
 from . import UserSchema, validate_and_dump
 
 if ALLOW_NATIVE_ENUM:
@@ -154,6 +154,10 @@ def test_nested_string_to_cls():
     assert nested_def["properties"]["foo"]["type"] == "integer"
 
 
+@pytest.mark.skipif(
+    MARSHMALLOW_MAJOR >= 4,
+    reason="`Schema(context=...)` was removed in marshmallow 4 in favor of contextvars",
+)
 def test_nested_context():
     class TestNestedSchema(Schema):
         def __init__(self, *args, **kwargs):

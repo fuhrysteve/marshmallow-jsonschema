@@ -1,7 +1,29 @@
 0.15.0 (2026-04-19)
-    Feature batch from the open-PR backlog. All changes are additive or
-    bug fixes; no public API removed or renamed. Python 3.9+ and
-    marshmallow >=3.13,<4 requirements are unchanged.
+    Feature batch from the open-PR backlog plus marshmallow 4 support.
+    All changes are additive or bug fixes; no public API removed or
+    renamed. Python 3.9+ requirement unchanged. The `marshmallow<4` upper
+    bound from 0.14.0 is dropped - this release works on both
+    marshmallow 3 (>=3.13) and marshmallow 4.
+
+    marshmallow 4 support:
+    - Drop the `from marshmallow.utils import _Missing` import (the
+      symbol is gone in m4); derive it from `type(missing)` instead.
+    - Read marshmallow's version via `importlib.metadata` rather than
+      `marshmallow.__version__` (also gone in m4).
+    - When dumping a `Nested` schema, pass `context=obj.context` only
+      when both attributes exist - m4 removed `Schema.context` and the
+      `context=` constructor kwarg in favor of `contextvars.ContextVar`.
+    - Expose `MARSHMALLOW_MAJOR` from `marshmallow_jsonschema.base` for
+      consumers that need to branch on the installed version.
+    - New cross-version test suite `tests/test_marshmallow_compat.py`
+      (24 tests) asserts identical JSON Schema output on both major
+      versions for the patterns we care about: scalars, defaults,
+      metadata, `dump_only`, `allow_none`, recursive nesting,
+      `data_key` rewriting, every validator handler, native Enum,
+      `INCLUDE/EXCLUDE/RAISE`, schema-level Meta options, and an
+      end-to-end `jsonschema.validate(...)` round-trip.
+    - CI matrix now tests Python 3.9-3.13 against both marshmallow 3
+      and marshmallow 4 separately.
 
     New:
     - Emit schema-level `title` and `description` from `class Meta`.
@@ -22,7 +44,7 @@
       `validate=ContainsOnly([...])` emits `items.anyOf: [{const}, ...]`
       and `uniqueItems: true`. (#96)
 
-    Fixes:
+    Other fixes:
     - Propagate `props_ordered` from the outer JSONSchema into nested
       schemas. Previously nested fields were always alphabetically
       sorted regardless of the outer `props_ordered=True`. (#109, #129)
