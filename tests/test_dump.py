@@ -1,6 +1,7 @@
 import uuid
 from enum import Enum
 
+import jsonschema
 import pytest
 from marshmallow import Schema, fields, validate
 from marshmallow_enum import EnumField
@@ -33,6 +34,22 @@ def test_default():
 
     props = dumped["definitions"]["UserSchema"]["properties"]
     assert props["id"]["default"] == "no-id"
+
+
+def test_default_nonserializable_not_emitted():
+    """A non-callable dump_default whose Python value isn't JSON-serializable
+    must not be emitted. Otherwise the schema dict can't round-trip through
+    `json.dumps`. Regression for #181."""
+    import json
+
+    class TestSchema(Schema):
+        uid = fields.UUID(dump_default=uuid.uuid4())
+
+    dumped = validate_and_dump(TestSchema())
+
+    props = dumped["definitions"]["TestSchema"]["properties"]
+    assert "default" not in props["uid"]
+    json.dumps(dumped)
 
 
 def test_default_callable_not_serialized():
@@ -484,6 +501,55 @@ def test_unknown_typed_field():
     }
 
 
+def test_custom_field_honors_metadata_and_default():
+    """Fields with `_jsonschema_type_mapping` historically lost their
+    `metadata={...}` content and their `dump_default`. Regression for #21."""
+
+    class Colour(fields.Field):
+        def _jsonschema_type_mapping(self):
+            return {"type": "string"}
+
+    class TestSchema(Schema):
+        favourite_colour = Colour(
+            dump_default="#ffffff",
+            metadata={"description": "User's favourite colour", "title": "Colour"},
+        )
+
+    dumped = validate_and_dump(TestSchema())
+    prop = dumped["definitions"]["TestSchema"]["properties"]["favourite_colour"]
+    assert prop == {
+        "type": "string",
+        "default": "#ffffff",
+        "description": "User's favourite colour",
+        "title": "Colour",
+    }
+
+
+def test_custom_field_jsonschema_type_mapping_accepts_context():
+    """A custom field whose `_jsonschema_type_mapping` accepts
+    `(self, json_schema, obj)` receives the JSONSchema instance and the
+    schema obj, letting it call back into the dumping machinery. Used for
+    wrapper-style fields that need to emit a $ref to a recursive schema.
+    Regression for #165."""
+
+    class NoOpWrapper(fields.Field):
+        def __init__(self, field, **kwargs):
+            self.field = field
+            super().__init__(**kwargs)
+
+        def _jsonschema_type_mapping(self, json_schema, obj):
+            return json_schema._get_schema_for_field(obj, self.field)
+
+    class ContrivedSchema(Schema):
+        recursive = NoOpWrapper(fields.Nested("ContrivedSchema"))
+
+    dumped = validate_and_dump(ContrivedSchema())
+    assert dumped["definitions"]["ContrivedSchema"]["properties"]["recursive"] == {
+        "type": "object",
+        "$ref": "#/definitions/ContrivedSchema",
+    }
+
+
 def test_field_subclass():
     """JSON schema generation should not fail on sublcass marshmallow field."""
 
@@ -531,6 +597,27 @@ def test_metadata_direct_from_field():
         "title": "metadata_field",
         "type": "string",
         "description": "Directly on the field!",
+    }
+
+
+def test_allow_none_on_nested():
+    """A Nested field with allow_none=True should produce anyOf [$ref, null]."""
+
+    class ChildSchema(Schema):
+        id = fields.Integer(required=True)
+
+    class TestSchema(Schema):
+        id = fields.Integer(required=True)
+        nested_fld = fields.Nested(ChildSchema, allow_none=True)
+
+    schema = TestSchema()
+    dumped = validate_and_dump(schema)
+
+    assert dumped["definitions"]["TestSchema"]["properties"]["nested_fld"] == {
+        "anyOf": [
+            {"type": "object", "$ref": "#/definitions/ChildSchema"},
+            {"type": "null"},
+        ]
     }
 
 
@@ -626,6 +713,52 @@ def test_datetime_based():
     }
 
 
+def test_props_ordered_propagates_to_nested():
+    """props_ordered=True on the outer JSONSchema must apply to nested
+    schemas too. Regression for #109."""
+
+    class Inner(Schema):
+        z = fields.Str()
+        y = fields.Str()
+        x = fields.Str()
+
+    class Outer(Schema):
+        d = fields.Str()
+        c = fields.Str()
+        a = fields.Str()
+        nested = fields.Nested(Inner)
+
+    dumped = JSONSchema(props_ordered=True).dump(Outer())
+    outer_props = list(dumped["definitions"]["Outer"]["properties"].keys())
+    inner_props = list(dumped["definitions"]["Inner"]["properties"].keys())
+
+    assert outer_props == ["d", "c", "a", "nested"]
+    assert inner_props == ["z", "y", "x"]
+
+
+def test_definitions_path_custom():
+    """The `definitions_path` constructor argument should reshape both the
+    root key holding nested definitions and the emitted $ref paths.
+    Useful for targeting OpenAPI, which uses `components/schemas` instead
+    of `definitions`."""
+
+    class Inner(Schema):
+        foo = fields.Integer()
+
+    class Outer(Schema):
+        inner = fields.Nested(Inner)
+
+    dumped = JSONSchema(definitions_path="components/schemas").dump(Outer())
+
+    assert "definitions" not in dumped
+    assert "components/schemas" in dumped
+    assert dumped["$ref"] == "#/components/schemas/Outer"
+    assert (
+        dumped["components/schemas"]["Outer"]["properties"]["inner"]["$ref"]
+        == "#/components/schemas/Inner"
+    )
+
+
 def test_sorting_properties():
     # Field declaration order is preserved by marshmallow itself; what we're
     # exercising here is JSONSchema's `props_ordered` flag, which gates whether
@@ -694,6 +827,25 @@ def test_enum_based_load_dump_value():
 
     with pytest.raises(NotImplementedError):
         validate_and_dump(schema)
+
+
+def test_integer_field_emits_integer_type():
+    """Regression test for #117 — Integer fields must emit `type: integer`,
+    not `type: number` with a `format: integer`. Otherwise floats validate
+    against integer fields."""
+
+    class Foo(Schema):
+        bar = fields.Integer()
+
+    schema = JSONSchema().dump(Foo())
+    bar_property = schema["definitions"]["Foo"]["properties"]["bar"]
+
+    assert bar_property["type"] == "integer"
+    assert "format" not in bar_property
+
+    jsonschema.validate({"bar": 1}, schema)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate({"bar": 1.1}, schema)
 
 
 @pytest.mark.skipif(

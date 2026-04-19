@@ -1,8 +1,9 @@
 import datetime
 import decimal
+import json
 import uuid
 from enum import Enum
-from inspect import isclass
+from inspect import isclass, signature
 import typing
 
 from marshmallow import fields, missing, Schema, validate
@@ -40,6 +41,7 @@ ALLOW_ENUMS = ALLOW_MARSHMALLOW_ENUM
 
 from .exceptions import UnsupportedValueError
 from .validation import (
+    handle_contains_only,
     handle_equal,
     handle_length,
     handle_one_of,
@@ -113,12 +115,29 @@ if ALLOW_NATIVE_ENUM:
 
 
 FIELD_VALIDATORS = {
+    validate.ContainsOnly: handle_contains_only,
     validate.Equal: handle_equal,
     validate.Length: handle_length,
     validate.OneOf: handle_one_of,
     validate.Range: handle_range,
     validate.Regexp: handle_regexp,
 }
+
+
+def _is_json_serializable(value) -> bool:
+    """Return True if `value` can be emitted into a JSON schema directly.
+
+    Used to guard `default` emission: marshmallow accepts Python objects
+    (UUID, datetime, etc.) as dump_default values, but those objects can
+    only be serialized by marshmallow's own field-specific logic - they
+    aren't valid JSON literals, so including them as `default` produces
+    a schema that can't round-trip through `json.dumps`.
+    """
+    try:
+        json.dumps(value)
+        return True
+    except TypeError:
+        return False
 
 
 def _resolve_additional_properties(cls) -> bool:
@@ -144,6 +163,19 @@ def _resolve_additional_properties(cls) -> bool:
         raise UnsupportedValueError("Unknown value %s for `unknown`" % unknown)
 
 
+def _resolve_schema_meta_string(cls, name):
+    """Read a string option off ``cls.Meta`` and validate it. Returns None
+    when the option isn't set. Raises ``UnsupportedValueError`` if present
+    but not a str, so callers get a clear error instead of a silently
+    malformed schema."""
+    value = getattr(cls.Meta, name, None)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise UnsupportedValueError("`{}` must be a str".format(name))
+    return value
+
+
 class JSONSchema(Schema):
     """Converts to JSONSchema as defined by http://json-schema.org/."""
 
@@ -162,6 +194,7 @@ class JSONSchema(Schema):
         self._nested_schema_classes: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
         self.nested = kwargs.pop("nested", False)
         self.props_ordered = kwargs.pop("props_ordered", False)
+        self.definitions_path = kwargs.pop("definitions_path", "definitions")
         setattr(self.opts, "ordered", self.props_ordered)
         super().__init__(*args, **kwargs)
 
@@ -209,7 +242,8 @@ class JSONSchema(Schema):
             json_schema["readOnly"] = True
 
         if field.dump_default is not missing and not callable(field.dump_default):
-            json_schema["default"] = field.dump_default
+            if _is_json_serializable(field.dump_default):
+                json_schema["default"] = field.dump_default
 
         if ALLOW_NATIVE_ENUM and isinstance(field, NativeEnumField):
             json_schema["enum"] = self._get_native_enum_values(field)
@@ -285,12 +319,52 @@ class JSONSchema(Schema):
 
         raise UnsupportedValueError("unsupported field type %s" % field)
 
+    def _call_jsonschema_type_mapping(self, obj, field):
+        """Invoke the field's ``_jsonschema_type_mapping``, optionally passing
+        through the JSONSchema instance and the schema obj.
+
+        Existing no-arg implementations continue to work unchanged. Custom
+        field types that explicitly declare extra parameters can introspect
+        ``self`` to call back into the JSONSchema machinery - useful for
+        wrapper-style fields that need to emit a $ref to a recursive schema.
+        """
+        mapping = field._jsonschema_type_mapping
+        # len(sig.parameters) excludes `self` because we're looking at the
+        # bound method's signature.
+        if len(signature(mapping).parameters) == 2:
+            return mapping(self, obj)
+        return mapping()
+
+    def _apply_custom_field_attributes(self, schema, field):
+        """Apply field-level attributes (title/description metadata, default,
+        dump_only) to a schema produced by a ``_jsonschema_type_mapping``.
+
+        `_from_python_type` applies these itself; custom-typed fields bypass
+        that path, so without this they'd silently lose their metadata.
+        """
+        if field.dump_only:
+            schema["readOnly"] = True
+
+        if field.dump_default is not missing and not callable(field.dump_default):
+            if _is_json_serializable(field.dump_default):
+                schema["default"] = field.dump_default
+
+        # NOTE: doubled up to maintain backwards compatibility
+        metadata = field.metadata.get("metadata", {})
+        metadata.update(field.metadata)
+        for md_key, md_val in metadata.items():
+            if md_key in ("metadata", "name", "_jsonschema_type_mapping"):
+                continue
+            schema.setdefault(md_key, md_val)
+
     def _get_schema_for_field(self, obj, field):
         """Get schema and validators for field."""
         if hasattr(field, "_jsonschema_type_mapping"):
-            schema = field._jsonschema_type_mapping()
+            schema = self._call_jsonschema_type_mapping(obj, field)
+            self._apply_custom_field_attributes(schema, field)
         elif "_jsonschema_type_mapping" in field.metadata:
             schema = field.metadata["_jsonschema_type_mapping"]
+            self._apply_custom_field_attributes(schema, field)
         else:
             if isinstance(field, fields.Nested):
                 # Special treatment for nested fields.
@@ -341,12 +415,20 @@ class JSONSchema(Schema):
         # If this is not a schema we've seen, and it's not this schema (checking this for recursive schemas),
         # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
-            wrapped_nested = self.__class__(nested=True)
+            wrapped_nested = self.__class__(
+                nested=True,
+                props_ordered=self.props_ordered,
+                definitions_path=self.definitions_path,
+            )
             wrapped_dumped = wrapped_nested.dump(nested_instance)
 
             wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
                 nested_cls
             )
+            for meta_key in ("title", "description"):
+                value = _resolve_schema_meta_string(nested_cls, meta_key)
+                if value is not None:
+                    wrapped_dumped[meta_key] = value
 
             self._nested_schema_classes[name] = wrapped_dumped
 
@@ -367,6 +449,9 @@ class JSONSchema(Schema):
         if field.dump_default is not missing and not callable(field.dump_default):
             schema["default"] = nested_instance.dump(field.dump_default)
 
+        if field.allow_none:
+            schema = {"anyOf": [schema, {"type": "null"}]}
+
         if field.many:
             schema = {
                 "type": "array" if field.required else ["array", "null"],
@@ -376,7 +461,10 @@ class JSONSchema(Schema):
         return schema
 
     def _schema_base(self, name):
-        return {"type": "object", "$ref": "#/definitions/{}".format(name)}
+        return {
+            "type": "object",
+            "$ref": "#/{}/{}".format(self.definitions_path, name),
+        }
 
     def dump(self, obj, **kwargs):
         """Take obj for later use: using class name to namespace definition."""
@@ -393,11 +481,15 @@ class JSONSchema(Schema):
         name = cls.__name__
 
         data["additionalProperties"] = _resolve_additional_properties(cls)
+        for meta_key in ("title", "description"):
+            value = _resolve_schema_meta_string(cls, meta_key)
+            if value is not None:
+                data[meta_key] = value
 
         self._nested_schema_classes[name] = data
         root = {
             "$schema": "http://json-schema.org/draft-07/schema#",
-            "definitions": self._nested_schema_classes,
-            "$ref": "#/definitions/{name}".format(name=name),
+            self.definitions_path: self._nested_schema_classes,
+            "$ref": "#/{path}/{name}".format(path=self.definitions_path, name=name),
         }
         return root
