@@ -306,12 +306,36 @@ class JSONSchema(Schema):
 
         raise UnsupportedValueError("unsupported field type %s" % field)
 
+    def _apply_custom_field_attributes(self, schema, field):
+        """Apply field-level attributes (title/description metadata, default,
+        dump_only) to a schema produced by a ``_jsonschema_type_mapping``.
+
+        `_from_python_type` applies these itself; custom-typed fields bypass
+        that path, so without this they'd silently lose their metadata.
+        """
+        if field.dump_only:
+            schema["readOnly"] = True
+
+        if field.dump_default is not missing and not callable(field.dump_default):
+            if _is_json_serializable(field.dump_default):
+                schema["default"] = field.dump_default
+
+        # NOTE: doubled up to maintain backwards compatibility
+        metadata = field.metadata.get("metadata", {})
+        metadata.update(field.metadata)
+        for md_key, md_val in metadata.items():
+            if md_key in ("metadata", "name", "_jsonschema_type_mapping"):
+                continue
+            schema.setdefault(md_key, md_val)
+
     def _get_schema_for_field(self, obj, field):
         """Get schema and validators for field."""
         if hasattr(field, "_jsonschema_type_mapping"):
             schema = field._jsonschema_type_mapping()
+            self._apply_custom_field_attributes(schema, field)
         elif "_jsonschema_type_mapping" in field.metadata:
             schema = field.metadata["_jsonschema_type_mapping"]
+            self._apply_custom_field_attributes(schema, field)
         else:
             if isinstance(field, fields.Nested):
                 # Special treatment for nested fields.

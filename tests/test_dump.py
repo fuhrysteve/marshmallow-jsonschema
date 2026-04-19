@@ -501,6 +501,30 @@ def test_unknown_typed_field():
     }
 
 
+def test_custom_field_honors_metadata_and_default():
+    """Fields with `_jsonschema_type_mapping` historically lost their
+    `metadata={...}` content and their `dump_default`. Regression for #21."""
+
+    class Colour(fields.Field):
+        def _jsonschema_type_mapping(self):
+            return {"type": "string"}
+
+    class TestSchema(Schema):
+        favourite_colour = Colour(
+            dump_default="#ffffff",
+            metadata={"description": "User's favourite colour", "title": "Colour"},
+        )
+
+    dumped = validate_and_dump(TestSchema())
+    prop = dumped["definitions"]["TestSchema"]["properties"]["favourite_colour"]
+    assert prop == {
+        "type": "string",
+        "default": "#ffffff",
+        "description": "User's favourite colour",
+        "title": "Colour",
+    }
+
+
 def test_field_subclass():
     """JSON schema generation should not fail on sublcass marshmallow field."""
 
