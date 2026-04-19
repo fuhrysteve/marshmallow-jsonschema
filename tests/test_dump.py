@@ -525,6 +525,31 @@ def test_custom_field_honors_metadata_and_default():
     }
 
 
+def test_custom_field_jsonschema_type_mapping_accepts_context():
+    """A custom field whose `_jsonschema_type_mapping` accepts
+    `(self, json_schema, obj)` receives the JSONSchema instance and the
+    schema obj, letting it call back into the dumping machinery. Used for
+    wrapper-style fields that need to emit a $ref to a recursive schema.
+    Regression for #165."""
+
+    class NoOpWrapper(fields.Field):
+        def __init__(self, field, **kwargs):
+            self.field = field
+            super().__init__(**kwargs)
+
+        def _jsonschema_type_mapping(self, json_schema, obj):
+            return json_schema._get_schema_for_field(obj, self.field)
+
+    class ContrivedSchema(Schema):
+        recursive = NoOpWrapper(fields.Nested("ContrivedSchema"))
+
+    dumped = validate_and_dump(ContrivedSchema())
+    assert dumped["definitions"]["ContrivedSchema"]["properties"]["recursive"] == {
+        "type": "object",
+        "$ref": "#/definitions/ContrivedSchema",
+    }
+
+
 def test_field_subclass():
     """JSON schema generation should not fail on sublcass marshmallow field."""
 

@@ -3,7 +3,7 @@ import decimal
 import json
 import uuid
 from enum import Enum
-from inspect import isclass
+from inspect import isclass, signature
 import typing
 
 from marshmallow import fields, missing, Schema, validate
@@ -306,6 +306,22 @@ class JSONSchema(Schema):
 
         raise UnsupportedValueError("unsupported field type %s" % field)
 
+    def _call_jsonschema_type_mapping(self, obj, field):
+        """Invoke the field's ``_jsonschema_type_mapping``, optionally passing
+        through the JSONSchema instance and the schema obj.
+
+        Existing no-arg implementations continue to work unchanged. Custom
+        field types that explicitly declare extra parameters can introspect
+        ``self`` to call back into the JSONSchema machinery - useful for
+        wrapper-style fields that need to emit a $ref to a recursive schema.
+        """
+        mapping = field._jsonschema_type_mapping
+        # len(sig.parameters) excludes `self` because we're looking at the
+        # bound method's signature.
+        if len(signature(mapping).parameters) == 2:
+            return mapping(self, obj)
+        return mapping()
+
     def _apply_custom_field_attributes(self, schema, field):
         """Apply field-level attributes (title/description metadata, default,
         dump_only) to a schema produced by a ``_jsonschema_type_mapping``.
@@ -331,7 +347,7 @@ class JSONSchema(Schema):
     def _get_schema_for_field(self, obj, field):
         """Get schema and validators for field."""
         if hasattr(field, "_jsonschema_type_mapping"):
-            schema = field._jsonschema_type_mapping()
+            schema = self._call_jsonschema_type_mapping(obj, field)
             self._apply_custom_field_attributes(schema, field)
         elif "_jsonschema_type_mapping" in field.metadata:
             schema = field.metadata["_jsonschema_type_mapping"]
