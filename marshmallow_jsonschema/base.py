@@ -265,15 +265,36 @@ class JSONSchema(Schema):
         return properties
 
     def get_required(self, obj) -> typing.Union[typing.List[str], typing.Any]:
-        """Fill out required field."""
+        """Fill out required field.
+
+        Honors `Schema(partial=...)`: when `partial` is `True` no fields
+        are required, when `partial` is a tuple/list the named fields are
+        treated as optional even if declared `required=True`.
+        """
         required = []
+        # `partial` is a Schema instance attribute and only meaningful on
+        # an instance, not a class. `callable(obj)` here means we were
+        # given a Schema class - treat that as no partial.
         if callable(obj):
             field_items_iterable = sorted(obj().fields.items())
+            partial = None
         else:
             field_items_iterable = sorted(obj.fields.items())
+            partial = getattr(obj, "partial", None)
+
         for field_name, field in field_items_iterable:
-            if field.required:
-                required.append(field.data_key or field.name)
+            if not field.required:
+                continue
+            # `partial=True` makes every field optional.
+            if partial is True:
+                continue
+            # `partial=(name1, name2, ...)` makes only the named fields
+            # optional. Match against `field_name` (the attribute name
+            # in the schema), which is what marshmallow's `partial`
+            # itself matches against.
+            if isinstance(partial, (list, tuple)) and field_name in partial:
+                continue
+            required.append(field.data_key or field.name)
 
         return required or missing
 

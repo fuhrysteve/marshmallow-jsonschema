@@ -871,6 +871,48 @@ def test_required_excluded_when_empty():
     assert "required" not in dumped["definitions"]["TestSchema"]
 
 
+def test_partial_true_drops_required():
+    """`Schema(partial=True)` makes every field optional. The dumped
+    JSON Schema should not include any of them in `required`.
+    Regression for #112."""
+
+    class TestSchema(Schema):
+        name = fields.String(required=True)
+        email = fields.String(required=True)
+
+    dumped = validate_and_dump(TestSchema(partial=True))
+    assert "required" not in dumped["definitions"]["TestSchema"]
+
+
+def test_partial_tuple_drops_named_fields_from_required():
+    """`Schema(partial=("foo",))` makes only the named fields optional.
+    Other required fields should still appear in `required`.
+    Regression for #112."""
+
+    class TestSchema(Schema):
+        name = fields.String(required=True)
+        email = fields.String(required=True)
+        age = fields.Integer(required=True)
+
+    dumped = validate_and_dump(TestSchema(partial=("email", "age")))
+    assert dumped["definitions"]["TestSchema"]["required"] == ["name"]
+
+
+def test_partial_does_not_affect_non_partial_dump():
+    """Sanity: with no `partial` argument the existing behavior
+    (all `required=True` fields appear) must be preserved."""
+
+    class TestSchema(Schema):
+        name = fields.String(required=True)
+        email = fields.String(required=True)
+
+    dumped = validate_and_dump(TestSchema())
+    assert sorted(dumped["definitions"]["TestSchema"]["required"]) == [
+        "email",
+        "name",
+    ]
+
+
 def test_required_uses_data_key():
     class TestSchema(Schema):
         optional_value = fields.String(data_key="opt", required=True)
