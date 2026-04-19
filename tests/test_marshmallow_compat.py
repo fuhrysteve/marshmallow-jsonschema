@@ -345,6 +345,46 @@ def test_generated_schema_validates_instances_parity():
         jsonschema.validate({"name": "alice", "age": 1.5}, dumped)  # int vs float
 
 
+def test_tuple_field_parity():
+    """`fields.Tuple` must emit identical fixed-length, positionally
+    typed array schemas on both marshmallow versions."""
+
+    class S(Schema):
+        coords = fields.Tuple([fields.Float(), fields.Float()])
+
+    prop = JSONSchema().dump(S())["definitions"]["S"]["properties"]["coords"]
+    assert prop["type"] == "array"
+    assert prop["minItems"] == 2
+    assert prop["maxItems"] == 2
+    assert [item["type"] for item in prop["items"]] == ["number", "number"]
+
+
+def test_constant_field_parity():
+    """`fields.Constant` must emit `const` + matching `type` identically
+    on both marshmallow versions."""
+
+    class S(Schema):
+        version = fields.Constant("v2")
+
+    prop = JSONSchema().dump(S())["definitions"]["S"]["properties"]["version"]
+    assert prop == {"const": "v2", "type": "string"}
+
+
+def test_pluck_field_parity():
+    """`fields.Pluck` must emit the picked field's schema (not a $ref)
+    on both marshmallow versions."""
+
+    class Inner(Schema):
+        id = fields.Integer()
+
+    class Outer(Schema):
+        member_id = fields.Pluck(Inner, "id")
+
+    prop = JSONSchema().dump(Outer())["definitions"]["Outer"]["properties"]["member_id"]
+    assert prop["type"] == "integer"
+    assert "$ref" not in prop
+
+
 def test_unsupported_field_raises_parity():
     """An unmapped custom field must raise `UnsupportedValueError` on
     both versions - silent fallback would hide bugs."""

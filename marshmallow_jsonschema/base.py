@@ -345,6 +345,61 @@ class JSONSchema(Schema):
             ]
         }
 
+    def _from_tuple_field(self, obj, field):
+        """`fields.Tuple([Inner1(), Inner2(), ...])` is a fixed-length
+        positional sequence; we emit Draft-7's array form with a
+        positional `items` schema list and `min/maxItems` pinning the
+        length so a JSON Schema validator rejects wrong-arity inputs.
+        """
+        item_schemas = [
+            self._get_schema_for_field(obj, sub) for sub in field.tuple_fields
+        ]
+        return {
+            "type": "array",
+            "items": item_schemas,
+            "minItems": len(item_schemas),
+            "maxItems": len(item_schemas),
+        }
+
+    def _from_constant_field(self, obj, field):
+        """`fields.Constant(value)` always serializes to a fixed value;
+        emit JSON Schema's `const`. Also try to emit a matching `type`
+        when the constant maps cleanly to one of our known Python -> JSON
+        type pairs - some validators are happier with both."""
+        schema = {}
+        if _is_json_serializable(field.constant):
+            schema["const"] = field.constant
+        py_type = type(field.constant)
+        if py_type in PY_TO_JSON_TYPES_MAP:
+            for key, val in PY_TO_JSON_TYPES_MAP[py_type].items():
+                schema[key] = val
+        return schema
+
+    def _from_pluck_field(self, obj, field):
+        """`fields.Pluck(NestedSchema, "x")` extracts a single field from
+        a nested schema. We emit the picked field's schema directly,
+        not a `$ref` to the whole nested definition - otherwise the
+        emitted shape would describe the wrong type entirely.
+        """
+        nested = field.nested
+        if isinstance(nested, (str, bytes)):
+            nested = get_class(nested)
+        if isclass(nested) and issubclass(nested, Schema):
+            try:
+                nested_instance = nested(context=obj.context)
+            except (AttributeError, TypeError):
+                nested_instance = nested()
+        elif callable(nested):
+            nested_instance = nested()
+        else:
+            nested_instance = nested
+
+        picked = nested_instance.fields[field.field_name]
+        schema = self._get_schema_for_field(obj, picked)
+        if field.many:
+            schema = {"type": "array", "items": schema}
+        return schema
+
     def _get_python_type(self, field):
         """Get python type based on field subclass"""
         for map_class, pytype in MARSHMALLOW_TO_PY_TYPES_PAIRS:
@@ -400,9 +455,18 @@ class JSONSchema(Schema):
             schema = field.metadata["_jsonschema_type_mapping"]
             self._apply_custom_field_attributes(schema, field)
         else:
-            if isinstance(field, fields.Nested):
+            # Pluck is a Nested subclass, so it must be checked first.
+            if isinstance(field, fields.Pluck):
+                schema = self._from_pluck_field(obj, field)
+            elif isinstance(field, fields.Nested):
                 # Special treatment for nested fields.
                 schema = self._from_nested_schema(obj, field)
+            elif hasattr(fields, "Tuple") and isinstance(field, fields.Tuple):
+                # `fields.Tuple` was added in marshmallow 3.16; the
+                # hasattr guard keeps us importable on 3.13-3.15.
+                schema = self._from_tuple_field(obj, field)
+            elif isinstance(field, fields.Constant):
+                schema = self._from_constant_field(obj, field)
             elif ALLOW_UNIONS and isinstance(field, Union):
                 schema = self._from_union_schema(obj, field)
             else:

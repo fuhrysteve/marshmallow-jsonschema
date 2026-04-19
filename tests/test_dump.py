@@ -554,6 +554,83 @@ def test_custom_field_jsonschema_type_mapping_accepts_context():
     }
 
 
+def test_tuple_field():
+    """`fields.Tuple` should emit a fixed-length, positionally-typed
+    array. Closes #162."""
+
+    class TestSchema(Schema):
+        coords = fields.Tuple([fields.Float(), fields.Float()])
+        labelled = fields.Tuple([fields.String(), fields.Integer()])
+
+    dumped = validate_and_dump(TestSchema())
+    props = dumped["definitions"]["TestSchema"]["properties"]
+    assert props["coords"]["type"] == "array"
+    assert props["coords"]["minItems"] == 2
+    assert props["coords"]["maxItems"] == 2
+    assert [item["type"] for item in props["coords"]["items"]] == ["number", "number"]
+    assert [item["type"] for item in props["labelled"]["items"]] == [
+        "string",
+        "integer",
+    ]
+
+
+def test_constant_field_string():
+    """`fields.Constant("hello")` should emit a `const` plus a matching
+    `type`. Closes #115."""
+
+    class TestSchema(Schema):
+        api_version = fields.Constant("v2")
+
+    dumped = validate_and_dump(TestSchema())
+    prop = dumped["definitions"]["TestSchema"]["properties"]["api_version"]
+    assert prop["const"] == "v2"
+    assert prop["type"] == "string"
+
+
+def test_constant_field_integer():
+    class TestSchema(Schema):
+        limit = fields.Constant(42)
+
+    dumped = validate_and_dump(TestSchema())
+    prop = dumped["definitions"]["TestSchema"]["properties"]["limit"]
+    assert prop["const"] == 42
+    assert prop["type"] == "integer"
+
+
+def test_pluck_field_single():
+    """`fields.Pluck` extracts a single field from a nested schema and
+    must emit that field's schema, not a `$ref` to the whole nested
+    definition."""
+
+    class Inner(Schema):
+        id = fields.Integer()
+        name = fields.String()
+
+    class Outer(Schema):
+        member_id = fields.Pluck(Inner, "id")
+
+    dumped = validate_and_dump(Outer())
+    prop = dumped["definitions"]["Outer"]["properties"]["member_id"]
+    assert prop["type"] == "integer"
+    assert "$ref" not in prop
+
+
+def test_pluck_field_many():
+    """`Pluck(..., many=True)` should wrap the picked-field schema in
+    a `type: array` envelope."""
+
+    class Inner(Schema):
+        id = fields.Integer()
+
+    class Outer(Schema):
+        member_ids = fields.Pluck(Inner, "id", many=True)
+
+    dumped = validate_and_dump(Outer())
+    prop = dumped["definitions"]["Outer"]["properties"]["member_ids"]
+    assert prop["type"] == "array"
+    assert prop["items"]["type"] == "integer"
+
+
 def test_field_subclass():
     """JSON schema generation should not fail on sublcass marshmallow field."""
 

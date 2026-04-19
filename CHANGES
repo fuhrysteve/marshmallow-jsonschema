@@ -46,6 +46,15 @@
     - Add a `ContainsOnly` validator handler: a `List` field with
       `validate=ContainsOnly([...])` emits `items.anyOf: [{const}, ...]`
       and `uniqueItems: true`. (#96)
+    - Add support for three more field types that previously raised
+      `UnsupportedValueError`:
+        * `fields.Tuple` - emits Draft-7 positional `items` plus
+          `min/maxItems` so wrong-arity inputs are rejected. (#162)
+        * `fields.Constant` - emits `const` plus a matching `type`
+          when the constant maps cleanly. (#115)
+        * `fields.Pluck` - emits the picked field's schema directly
+          instead of a `$ref` to the whole nested definition; honors
+          `many=True` by wrapping in a `type: array` envelope.
 
     Other fixes:
     - Propagate `props_ordered` from the outer JSONSchema into nested
