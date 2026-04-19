@@ -36,6 +36,22 @@ def test_default():
     assert props["id"]["default"] == "no-id"
 
 
+def test_default_nonserializable_not_emitted():
+    """A non-callable dump_default whose Python value isn't JSON-serializable
+    must not be emitted. Otherwise the schema dict can't round-trip through
+    `json.dumps`. Regression for #181."""
+    import json
+
+    class TestSchema(Schema):
+        uid = fields.UUID(dump_default=uuid.uuid4())
+
+    dumped = validate_and_dump(TestSchema())
+
+    props = dumped["definitions"]["TestSchema"]["properties"]
+    assert "default" not in props["uid"]
+    json.dumps(dumped)
+
+
 def test_default_callable_not_serialized():
     class TestSchema(Schema):
         uid = fields.UUID(dump_default=uuid.uuid4)

@@ -1,5 +1,6 @@
 import datetime
 import decimal
+import json
 import uuid
 from enum import Enum
 from inspect import isclass
@@ -123,6 +124,22 @@ FIELD_VALIDATORS = {
 }
 
 
+def _is_json_serializable(value) -> bool:
+    """Return True if `value` can be emitted into a JSON schema directly.
+
+    Used to guard `default` emission: marshmallow accepts Python objects
+    (UUID, datetime, etc.) as dump_default values, but those objects can
+    only be serialized by marshmallow's own field-specific logic - they
+    aren't valid JSON literals, so including them as `default` produces
+    a schema that can't round-trip through `json.dumps`.
+    """
+    try:
+        json.dumps(value)
+        return True
+    except TypeError:
+        return False
+
+
 def _resolve_additional_properties(cls) -> bool:
     meta = cls.Meta
 
@@ -212,7 +229,8 @@ class JSONSchema(Schema):
             json_schema["readOnly"] = True
 
         if field.dump_default is not missing and not callable(field.dump_default):
-            json_schema["default"] = field.dump_default
+            if _is_json_serializable(field.dump_default):
+                json_schema["default"] = field.dump_default
 
         if ALLOW_NATIVE_ENUM and isinstance(field, NativeEnumField):
             json_schema["enum"] = self._get_native_enum_values(field)
