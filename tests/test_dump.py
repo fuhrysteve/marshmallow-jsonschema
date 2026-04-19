@@ -62,7 +62,7 @@ def test_metadata():
 
     class TestSchema(Schema):
         myfield = fields.String(metadata={"foo": "Bar"})
-        yourfield = fields.Integer(required=True, baz="waz")
+        yourfield = fields.Integer(required=True, metadata={"baz": "waz"})
 
     schema = TestSchema()
 
@@ -396,10 +396,14 @@ def test_function():
 
     class FnSchema(Schema):
         fn_str = fields.Function(
-            lambda: "string", required=True, _jsonschema_type_mapping={"type": "string"}
+            lambda: "string",
+            required=True,
+            metadata={"_jsonschema_type_mapping": {"type": "string"}},
         )
         fn_int = fields.Function(
-            lambda: 123, required=True, _jsonschema_type_mapping={"type": "number"}
+            lambda: 123,
+            required=True,
+            metadata={"_jsonschema_type_mapping": {"type": "number"}},
         )
 
     schema = FnSchema()
@@ -446,14 +450,13 @@ def test_unknown_typed_field_throws_valueerror():
         def _serialize(self, value, attr, obj):
             return value
 
-    class UserSchema(Schema):
+    class UserSchemaWithInvalid(Schema):
         favourite_colour = Invalid()
 
-    schema = UserSchema()
-    json_schema = JSONSchema()
+    schema = UserSchemaWithInvalid()
 
     with pytest.raises(UnsupportedValueError):
-        validate_and_dump(json_schema.dump(schema))
+        validate_and_dump(schema)
 
 
 def test_unknown_typed_field():
@@ -516,7 +519,9 @@ def test_metadata_direct_from_field():
 
     class TestSchema(Schema):
         id = fields.Integer(required=True)
-        metadata_field = fields.String(description="Directly on the field!")
+        metadata_field = fields.String(
+            metadata={"description": "Directly on the field!"}
+        )
 
     schema = TestSchema()
 
@@ -622,10 +627,10 @@ def test_datetime_based():
 
 
 def test_sorting_properties():
+    # Field declaration order is preserved by marshmallow itself; what we're
+    # exercising here is JSONSchema's `props_ordered` flag, which gates whether
+    # the dumped properties are sorted (default) or kept in declaration order.
     class TestSchema(Schema):
-        class Meta:
-            ordered = True
-
         d = fields.Str()
         c = fields.Str()
         a = fields.Str()
@@ -685,13 +690,10 @@ def test_enum_based_load_dump_value():
     class TestSchema(Schema):
         enum_prop = EnumField(TestEnum, by_value=True)
 
-    # Should be sorting of fields
     schema = TestSchema()
 
-    json_schema = JSONSchema()
-
     with pytest.raises(NotImplementedError):
-        validate_and_dump(json_schema.dump(schema))
+        validate_and_dump(schema)
 
 
 @pytest.mark.skipif(
@@ -733,10 +735,9 @@ def test_native_enum_based_by_value():
         enum_prop = NativeEnumField(TestEnum, by_value=True)
 
     schema = TestSchema()
-    json_schema = JSONSchema()
 
     with pytest.raises(NotImplementedError):
-        validate_and_dump(json_schema.dump(schema))
+        validate_and_dump(schema)
 
 
 def test_union_based():
@@ -760,7 +761,7 @@ def test_union_based():
     assert len(data["definitions"]["TestSchema"]["properties"]["union_prop"]) == 1
 
     string_schema = {"type": "string", "title": ""}
-    integer_schema = {"type": "string", "title": ""}
+    integer_schema = {"type": "integer", "title": ""}
     referenced_nested_schema = {
         "type": "object",
         "$ref": "#/definitions/TestNestedSchema",

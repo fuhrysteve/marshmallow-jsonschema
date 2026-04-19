@@ -38,9 +38,6 @@ def test_length_validator_error():
     class BadSchema(Schema):
         bob = fields.Integer(validate=validate.Length(min=1, max=3))
 
-        class Meta:
-            strict = True
-
     schema = BadSchema()
     json_schema = JSONSchema()
 
