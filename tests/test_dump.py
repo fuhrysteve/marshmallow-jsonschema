@@ -626,6 +626,29 @@ def test_datetime_based():
     }
 
 
+def test_definitions_path_custom():
+    """The `definitions_path` constructor argument should reshape both the
+    root key holding nested definitions and the emitted $ref paths.
+    Useful for targeting OpenAPI, which uses `components/schemas` instead
+    of `definitions`."""
+
+    class Inner(Schema):
+        foo = fields.Integer()
+
+    class Outer(Schema):
+        inner = fields.Nested(Inner)
+
+    dumped = JSONSchema(definitions_path="components/schemas").dump(Outer())
+
+    assert "definitions" not in dumped
+    assert "components/schemas" in dumped
+    assert dumped["$ref"] == "#/components/schemas/Outer"
+    assert (
+        dumped["components/schemas"]["Outer"]["properties"]["inner"]["$ref"]
+        == "#/components/schemas/Inner"
+    )
+
+
 def test_sorting_properties():
     # Field declaration order is preserved by marshmallow itself; what we're
     # exercising here is JSONSchema's `props_ordered` flag, which gates whether
