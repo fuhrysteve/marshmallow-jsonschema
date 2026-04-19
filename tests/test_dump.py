@@ -615,9 +615,25 @@ def test_pluck_field_single():
     assert "$ref" not in prop
 
 
-def test_pluck_field_many():
-    """`Pluck(..., many=True)` should wrap the picked-field schema in
-    a `type: array` envelope."""
+def test_pluck_field_many_required():
+    """`Pluck(..., many=True, required=True)` wraps the picked-field
+    schema in a `type: array` envelope."""
+
+    class Inner(Schema):
+        id = fields.Integer()
+
+    class Outer(Schema):
+        member_ids = fields.Pluck(Inner, "id", many=True, required=True)
+
+    dumped = validate_and_dump(Outer())
+    prop = dumped["definitions"]["Outer"]["properties"]["member_ids"]
+    assert prop["type"] == "array"
+    assert prop["items"]["type"] == "integer"
+
+
+def test_pluck_field_many_optional_can_be_null():
+    """A non-required `Pluck(many=True)` should match the same shape as
+    a non-required `Nested(many=True)`: the array itself can be null."""
 
     class Inner(Schema):
         id = fields.Integer()
@@ -627,8 +643,56 @@ def test_pluck_field_many():
 
     dumped = validate_and_dump(Outer())
     prop = dumped["definitions"]["Outer"]["properties"]["member_ids"]
-    assert prop["type"] == "array"
-    assert prop["items"]["type"] == "integer"
+    assert prop["type"] == ["array", "null"]
+
+
+def test_tuple_field_honors_metadata():
+    """`fields.Tuple` must honor `metadata={...}` and `dump_only` like
+    other field types."""
+
+    class TestSchema(Schema):
+        coords = fields.Tuple(
+            [fields.Float(), fields.Float()],
+            dump_only=True,
+            metadata={"title": "Coordinates", "description": "(lat, lon)"},
+        )
+
+    prop = validate_and_dump(TestSchema())["definitions"]["TestSchema"]["properties"][
+        "coords"
+    ]
+    assert prop["title"] == "Coordinates"
+    assert prop["description"] == "(lat, lon)"
+    assert prop["readOnly"] is True
+
+
+def test_constant_field_honors_metadata():
+    """`fields.Constant` must honor `metadata={...}` and `dump_only`."""
+
+    class TestSchema(Schema):
+        api_version = fields.Constant(
+            "v2",
+            dump_only=True,
+            metadata={"description": "Pinned API version"},
+        )
+
+    prop = validate_and_dump(TestSchema())["definitions"]["TestSchema"]["properties"][
+        "api_version"
+    ]
+    assert prop["description"] == "Pinned API version"
+    assert prop["readOnly"] is True
+    assert prop["const"] == "v2"
+
+
+def test_definitions_path_rejects_non_str():
+    """`definitions_path=None` would later crash with `TypeError: argument
+    of type 'NoneType' is not iterable`. Catch it at construction with a
+    clear `UnsupportedValueError`."""
+    with pytest.raises(UnsupportedValueError):
+        JSONSchema(definitions_path=None)
+    with pytest.raises(UnsupportedValueError):
+        JSONSchema(definitions_path="")
+    with pytest.raises(UnsupportedValueError):
+        JSONSchema(definitions_path=123)
 
 
 def test_field_subclass():

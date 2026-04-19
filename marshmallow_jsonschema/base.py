@@ -223,10 +223,18 @@ class JSONSchema(Schema):
         self.props_ordered = kwargs.pop("props_ordered", False)
         self.definitions_path = kwargs.pop("definitions_path", "definitions")
         # `definitions_path` ends up both as a JSON-pointer segment in $ref
-        # strings AND as a top-level dict key in the output. Multi-segment
-        # paths like "components/schemas" produce a flat dict key with a
-        # slash in it, not a nested dict, so we reject them rather than
-        # silently emit something an OpenAPI consumer will misread.
+        # strings AND as a top-level dict key in the output. Validate it
+        # up-front so we surface a clear error instead of a confusing
+        # downstream crash:
+        #  - must be a non-empty str (rules out None / int / "")
+        #  - must be a single segment (multi-segment paths like
+        #    "components/schemas" produce a flat dict key with a slash in
+        #    it rather than the nested structure consumers expect)
+        if not isinstance(self.definitions_path, str) or not self.definitions_path:
+            raise UnsupportedValueError(
+                "`definitions_path` must be a non-empty str (got %r)"
+                % (self.definitions_path,)
+            )
         if "/" in self.definitions_path:
             raise UnsupportedValueError(
                 "`definitions_path` must be a single segment (got "
@@ -358,25 +366,38 @@ class JSONSchema(Schema):
         item_schemas = [
             self._get_schema_for_field(obj, sub) for sub in field.tuple_fields
         ]
-        return {
+        schema = {
             "type": "array",
             "items": item_schemas,
             "minItems": len(item_schemas),
             "maxItems": len(item_schemas),
         }
+        # Apply the outer Tuple field's metadata / dump_only / dump_default
+        # so callers can attach a title or description like they would on
+        # any other field type.
+        self._apply_custom_field_attributes(schema, field)
+        return schema
 
     def _from_constant_field(self, obj, field):
         """`fields.Constant(value)` always serializes to a fixed value;
         emit JSON Schema's `const`. Also try to emit a matching `type`
         when the constant maps cleanly to one of our known Python -> JSON
         type pairs - some validators are happier with both."""
-        schema = {}
+        schema: typing.Dict[str, typing.Any] = {}
         if _is_json_serializable(field.constant):
             schema["const"] = field.constant
         py_type = type(field.constant)
         if py_type in PY_TO_JSON_TYPES_MAP:
             for key, val in PY_TO_JSON_TYPES_MAP[py_type].items():
                 schema[key] = val
+        # Apply the field's metadata / dump_only so callers can attach a
+        # title or description.
+        self._apply_custom_field_attributes(schema, field)
+        # `fields.Constant` sets `dump_default = constant` internally,
+        # so the metadata pass would emit a `default` matching the
+        # `const` we already wrote. Strip the redundant key.
+        if "const" in schema and schema.get("default") == schema["const"]:
+            schema.pop("default", None)
         return schema
 
     def _from_pluck_field(self, obj, field):
@@ -401,7 +422,13 @@ class JSONSchema(Schema):
         picked = nested_instance.fields[field.field_name]
         schema = self._get_schema_for_field(obj, picked)
         if field.many:
-            schema = {"type": "array", "items": schema}
+            # Match `_from_nested_schema`'s many-handling: an optional
+            # many-array can also be null, while a required one must be
+            # an array.
+            schema = {
+                "type": "array" if field.required else ["array", "null"],
+                "items": schema,
+            }
         return schema
 
     def _get_python_type(self, field):

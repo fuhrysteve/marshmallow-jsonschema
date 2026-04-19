@@ -16,7 +16,7 @@
     - Expose `MARSHMALLOW_MAJOR` from `marshmallow_jsonschema.base` for
       consumers that need to branch on the installed version.
     - New cross-version test suite `tests/test_marshmallow_compat.py`
-      (24 tests) asserts identical JSON Schema output on both major
+      asserts identical JSON Schema output on both major
       versions for the patterns we care about: scalars, defaults,
       metadata, `dump_only`, `allow_none`, recursive nesting,
       `data_key` rewriting, every validator handler, native Enum,
