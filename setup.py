@@ -3,7 +3,6 @@ import os
 
 from setuptools import setup, find_packages
 
-
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
