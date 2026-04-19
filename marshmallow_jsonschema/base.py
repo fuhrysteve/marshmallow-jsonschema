@@ -22,9 +22,20 @@ except ImportError:
 try:
     from marshmallow_enum import EnumField, LoadDumpOptions
 
-    ALLOW_ENUMS = True
+    ALLOW_MARSHMALLOW_ENUM = True
 except ImportError:
-    ALLOW_ENUMS = False
+    ALLOW_MARSHMALLOW_ENUM = False
+
+try:
+    from marshmallow.fields import Enum as NativeEnumField
+
+    ALLOW_NATIVE_ENUM = True
+except ImportError:
+    ALLOW_NATIVE_ENUM = False
+
+# Backward-compatible alias. External code has historically imported
+# `ALLOW_ENUMS` to detect whether *any* enum support is active.
+ALLOW_ENUMS = ALLOW_MARSHMALLOW_ENUM or ALLOW_NATIVE_ENUM
 
 from .exceptions import UnsupportedValueError
 from .validation import (
@@ -92,10 +103,12 @@ MARSHMALLOW_TO_PY_TYPES_PAIRS = [
     (fields.Nested, dict),
 ]
 
-if ALLOW_ENUMS:
+if ALLOW_MARSHMALLOW_ENUM:
     # We currently only support loading enum's from their names. So the possible
     # values will always map to string in the JSONSchema
     MARSHMALLOW_TO_PY_TYPES_PAIRS.append((EnumField, Enum))
+if ALLOW_NATIVE_ENUM:
+    MARSHMALLOW_TO_PY_TYPES_PAIRS.append((NativeEnumField, Enum))
 
 
 FIELD_VALIDATORS = {
@@ -198,7 +211,9 @@ class JSONSchema(Schema):
         if field.default is not missing and not callable(field.default):
             json_schema["default"] = field.default
 
-        if ALLOW_ENUMS and isinstance(field, EnumField):
+        if ALLOW_NATIVE_ENUM and isinstance(field, NativeEnumField):
+            json_schema["enum"] = self._get_native_enum_values(field)
+        elif ALLOW_MARSHMALLOW_ENUM and isinstance(field, EnumField):
             json_schema["enum"] = self._get_enum_values(field)
 
         if field.allow_none:
@@ -226,9 +241,21 @@ class JSONSchema(Schema):
         return json_schema
 
     def _get_enum_values(self, field) -> typing.List[str]:
-        assert ALLOW_ENUMS and isinstance(field, EnumField)
+        assert ALLOW_MARSHMALLOW_ENUM and isinstance(field, EnumField)
 
         if field.load_by == LoadDumpOptions.value:
+            # Python allows enum values to be almost anything, so it's easier to just load from the
+            # names of the enum's which will have to be strings.
+            raise NotImplementedError(
+                "Currently do not support JSON schema for enums loaded by value"
+            )
+
+        return [value.name for value in field.enum]
+
+    def _get_native_enum_values(self, field) -> typing.List[str]:
+        assert ALLOW_NATIVE_ENUM and isinstance(field, NativeEnumField)
+
+        if field.by_value:
             # Python allows enum values to be almost anything, so it's easier to just load from the
             # names of the enum's which will have to be strings.
             raise NotImplementedError(
