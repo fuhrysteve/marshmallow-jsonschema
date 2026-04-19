@@ -166,9 +166,9 @@ class JSONSchema(Schema):
 
         for field_name, field in fields_items_sequence:
             schema = self._get_schema_for_field(obj, field)
-            properties[
-                field.metadata.get("name") or field.data_key or field.name
-            ] = schema
+            properties[field.metadata.get("name") or field.data_key or field.name] = (
+                schema
+            )
 
         return properties
 
