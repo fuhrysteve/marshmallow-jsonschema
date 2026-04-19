@@ -37,7 +37,7 @@ def test_default():
 
 def test_default_callable_not_serialized():
     class TestSchema(Schema):
-        uid = fields.UUID(default=uuid.uuid4)
+        uid = fields.UUID(dump_default=uuid.uuid4)
 
     schema = TestSchema()
 
@@ -360,7 +360,7 @@ def test_respect_default_for_nested_schema():
     class TestSchema(Schema):
         nested = fields.Nested(
             TestNestedSchema,
-            default=nested_default,
+            dump_default=nested_default,
         )
         yourfield_nested = fields.Integer(required=True)
 
