@@ -1,26 +1,24 @@
 PROJECT = marshmallow_jsonschema
 
-PYTHON_VERSION ?= 3.8
+PYTHON_VERSION ?= 3.12
 VIRTUAL_ENV ?= .venv
 PYTHON ?= $(VIRTUAL_ENV)/bin/python
 
 
 REQUIREMENTS = requirements.txt
 REQUIREMENTS_TEST = requirements-test.txt
-REQUIREMENTS_TOX = requirements-tox.txt
 
 SHELL := /bin/bash -euo pipefail
 
 venv_init:
-	pip install virtualenv
 	if [ ! -d $(VIRTUAL_ENV) ]; then \
-		virtualenv -p python$(PYTHON_VERSION) --prompt="($(PROJECT))" $(VIRTUAL_ENV); \
+		python$(PYTHON_VERSION) -m venv --prompt="$(PROJECT)" $(VIRTUAL_ENV); \
 	fi
 
 venv:  venv_init
 	$(VIRTUAL_ENV)/bin/pip install -r $(REQUIREMENTS)
 	$(VIRTUAL_ENV)/bin/pip install -r $(REQUIREMENTS_TEST)
-	$(VIRTUAL_ENV)/bin/pip install -r $(REQUIREMENTS_TOX)
+	$(VIRTUAL_ENV)/bin/pip install -e .
 
 tox:
 	tox

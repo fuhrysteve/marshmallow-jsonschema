@@ -1,38 +1,32 @@
-Setting Up for Local Development
-********************************
+# Contributing
 
-1. Fork marshmallow_jsonschema on Github.
+## Local development setup
 
-::
+```bash
+git clone https://github.com/fuhrysteve/marshmallow-jsonschema.git
+cd marshmallow-jsonschema
+make venv               # creates .venv and installs deps + the package in editable mode
+source .venv/bin/activate
+```
 
-    $ git clone https://github.com/fuhrysteve/marshmallow-jsonschema.git
-    $ cd marshmallow_jsonschema
+## Running the checks
 
-2. Create a virtual environment and install all dependencies
+```bash
+pytest                                  # unit tests
+black --check .                         # formatting (auto-fix: black .)
+mypy marshmallow_jsonschema             # type check
+tox                                     # full matrix (only if you have multiple Pythons installed)
+```
 
-::
+The same three checks run in CI (`.github/workflows/{build,black,mypy}.yml`).
 
-    $ make venv
+## Opening a PR
 
-3. Install the pre-commit hooks, which will format and lint your git staged files.
+- Keep changes focused. A bug fix or one feature per PR; avoid bundling unrelated cleanups.
+- Add or update tests for behavior changes.
+- Update `CHANGES` under the `unreleased` heading if the change is user-visible.
+- If you're changing the public API, note it explicitly in the PR description.
 
-::
+## Supported versions
 
-    # The pre-commit CLI was installed above
-    $ pre-commit install --allow-missing-config
-
-
-Running tests
-*************
-
-To run all tests: ::
-
-    $ pytest
-
-To run syntax checks: ::
-
-    $ tox -e lint
-
-(Optional) To run tests in all supported Python versions in their own virtual environments (must have each interpreter installed): ::
-
-    $ tox
+The current release targets Python 3.9+ and marshmallow 3.13 through the 3.x line. marshmallow 4 is not yet supported.

@@ -22,9 +22,6 @@ REQUIREMENTS_TESTS = open(
     os.path.join(PROJECT_DIR, REQUIREMENTS_TESTS_FILE)
 ).readlines()
 
-REQUIREMENTS_TOX_FILE = "requirements-tox.txt"
-REQUIREMENTS_TOX = open(os.path.join(PROJECT_DIR, REQUIREMENTS_TOX_FILE)).readlines()
-
 EXTRAS_REQUIRE = {
     "enum": ["marshmallow-enum"],
     "union": ["marshmallow-union"],
@@ -42,10 +39,9 @@ setup(
     author_email="fuhrysteve@gmail.com",
     url="https://github.com/fuhrysteve/marshmallow-jsonschema",
     packages=find_packages(exclude=("test*",)),
-    package_dir={"marshmallow-jsonschema": "marshmallow-jsonschema"},
     include_package_data=True,
     install_requires=REQUIREMENTS,
-    tests_require=REQUIREMENTS_TESTS + REQUIREMENTS_TOX,
+    tests_require=REQUIREMENTS_TESTS,
     extras_require=EXTRAS_REQUIRE,
     license="MIT License",
     zip_safe=False,

@@ -130,19 +130,13 @@ def handle_range(schema, field, validator, parent_schema):
         )
 
     if validator.min is not None:
-        # marshmallow 2 includes minimum by default
-        # marshmallow 3 supports "min_inclusive"
-        min_inclusive = getattr(validator, "min_inclusive", True)
-        if min_inclusive:
+        if validator.min_inclusive:
             schema["minimum"] = validator.min
         else:
             schema["exclusiveMinimum"] = validator.min
 
     if validator.max is not None:
-        # marshmallow 2 includes maximum by default
-        # marshmallow 3 supports "max_inclusive"
-        max_inclusive = getattr(validator, "max_inclusive", True)
-        if max_inclusive:
+        if validator.max_inclusive:
             schema["maximum"] = validator.max
         else:
             schema["exclusiveMaximum"] = validator.max

@@ -46,4 +46,6 @@ $(document).ready(function() {
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+    # This is an example intended for local exploration. Never run Flask
+    # with debug=True in production - it exposes the Werkzeug debugger.
+    app.run(host="127.0.0.1")
