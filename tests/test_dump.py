@@ -8,7 +8,7 @@ from marshmallow_enum import EnumField
 from marshmallow_union import Union
 
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
-from marshmallow_jsonschema.base import ALLOW_NATIVE_ENUM
+from marshmallow_jsonschema.base import ALLOW_NATIVE_ENUM, MARSHMALLOW_MAJOR
 from . import UserSchema, validate_and_dump
 
 if ALLOW_NATIVE_ENUM:
@@ -154,6 +154,10 @@ def test_nested_string_to_cls():
     assert nested_def["properties"]["foo"]["type"] == "integer"
 
 
+@pytest.mark.skipif(
+    MARSHMALLOW_MAJOR >= 4,
+    reason="`Schema(context=...)` was removed in marshmallow 4 in favor of contextvars",
+)
 def test_nested_context():
     class TestNestedSchema(Schema):
         def __init__(self, *args, **kwargs):
@@ -550,6 +554,204 @@ def test_custom_field_jsonschema_type_mapping_accepts_context():
     }
 
 
+def test_tuple_field():
+    """`fields.Tuple` should emit a fixed-length, positionally-typed
+    array. Closes #162."""
+
+    class TestSchema(Schema):
+        coords = fields.Tuple([fields.Float(), fields.Float()])
+        labelled = fields.Tuple([fields.String(), fields.Integer()])
+
+    dumped = validate_and_dump(TestSchema())
+    props = dumped["definitions"]["TestSchema"]["properties"]
+    assert props["coords"]["type"] == "array"
+    assert props["coords"]["minItems"] == 2
+    assert props["coords"]["maxItems"] == 2
+    assert [item["type"] for item in props["coords"]["items"]] == ["number", "number"]
+    assert [item["type"] for item in props["labelled"]["items"]] == [
+        "string",
+        "integer",
+    ]
+
+
+def test_constant_field_string():
+    """`fields.Constant("hello")` should emit a `const` plus a matching
+    `type`. Closes #115."""
+
+    class TestSchema(Schema):
+        api_version = fields.Constant("v2")
+
+    dumped = validate_and_dump(TestSchema())
+    prop = dumped["definitions"]["TestSchema"]["properties"]["api_version"]
+    assert prop["const"] == "v2"
+    assert prop["type"] == "string"
+
+
+def test_constant_field_integer():
+    class TestSchema(Schema):
+        limit = fields.Constant(42)
+
+    dumped = validate_and_dump(TestSchema())
+    prop = dumped["definitions"]["TestSchema"]["properties"]["limit"]
+    assert prop["const"] == 42
+    assert prop["type"] == "integer"
+
+
+def test_pluck_field_single():
+    """`fields.Pluck` extracts a single field from a nested schema and
+    must emit that field's schema, not a `$ref` to the whole nested
+    definition."""
+
+    class Inner(Schema):
+        id = fields.Integer()
+        name = fields.String()
+
+    class Outer(Schema):
+        member_id = fields.Pluck(Inner, "id")
+
+    dumped = validate_and_dump(Outer())
+    prop = dumped["definitions"]["Outer"]["properties"]["member_id"]
+    assert prop["type"] == "integer"
+    assert "$ref" not in prop
+
+
+def test_pluck_field_many_required():
+    """`Pluck(..., many=True, required=True)` wraps the picked-field
+    schema in a `type: array` envelope."""
+
+    class Inner(Schema):
+        id = fields.Integer()
+
+    class Outer(Schema):
+        member_ids = fields.Pluck(Inner, "id", many=True, required=True)
+
+    dumped = validate_and_dump(Outer())
+    prop = dumped["definitions"]["Outer"]["properties"]["member_ids"]
+    assert prop["type"] == "array"
+    assert prop["items"]["type"] == "integer"
+
+
+def test_pluck_field_many_optional_can_be_null():
+    """A non-required `Pluck(many=True)` should match the same shape as
+    a non-required `Nested(many=True)`: the array itself can be null."""
+
+    class Inner(Schema):
+        id = fields.Integer()
+
+    class Outer(Schema):
+        member_ids = fields.Pluck(Inner, "id", many=True)
+
+    dumped = validate_and_dump(Outer())
+    prop = dumped["definitions"]["Outer"]["properties"]["member_ids"]
+    assert prop["type"] == ["array", "null"]
+
+
+def test_tuple_field_honors_metadata():
+    """`fields.Tuple` must honor `metadata={...}` and `dump_only` like
+    other field types."""
+
+    class TestSchema(Schema):
+        coords = fields.Tuple(
+            [fields.Float(), fields.Float()],
+            dump_only=True,
+            metadata={"title": "Coordinates", "description": "(lat, lon)"},
+        )
+
+    prop = validate_and_dump(TestSchema())["definitions"]["TestSchema"]["properties"][
+        "coords"
+    ]
+    assert prop["title"] == "Coordinates"
+    assert prop["description"] == "(lat, lon)"
+    assert prop["readOnly"] is True
+
+
+def test_constant_field_honors_metadata():
+    """`fields.Constant` must honor `metadata={...}` and `dump_only`."""
+
+    class TestSchema(Schema):
+        api_version = fields.Constant(
+            "v2",
+            dump_only=True,
+            metadata={"description": "Pinned API version"},
+        )
+
+    prop = validate_and_dump(TestSchema())["definitions"]["TestSchema"]["properties"][
+        "api_version"
+    ]
+    assert prop["description"] == "Pinned API version"
+    assert prop["readOnly"] is True
+    assert prop["const"] == "v2"
+
+
+def test_pluck_field_allow_none():
+    """`Pluck(..., allow_none=True)` must wrap in anyOf [<schema>, null]
+    to match `Nested`'s allow_none behavior."""
+
+    class Inner(Schema):
+        id = fields.Integer()
+
+    class Outer(Schema):
+        member_id = fields.Pluck(Inner, "id", allow_none=True)
+
+    prop = validate_and_dump(Outer())["definitions"]["Outer"]["properties"]["member_id"]
+    assert prop == {"anyOf": [{"title": "id", "type": "integer"}, {"type": "null"}]}
+
+
+def test_pluck_field_outer_metadata_overrides():
+    """A Pluck field's outer `metadata={...}` should win over the picked
+    field's auto-derived attributes (the user is describing the OUTER
+    reference, not the inner picked field)."""
+
+    class Inner(Schema):
+        id = fields.Integer()
+
+    class Outer(Schema):
+        member_id = fields.Pluck(
+            Inner,
+            "id",
+            metadata={"title": "Member ID", "description": "A user reference"},
+        )
+
+    prop = validate_and_dump(Outer())["definitions"]["Outer"]["properties"]["member_id"]
+    assert prop["title"] == "Member ID"
+    assert prop["description"] == "A user reference"
+
+
+def test_tuple_field_allow_none():
+    class TestSchema(Schema):
+        coords = fields.Tuple([fields.Float(), fields.Float()], allow_none=True)
+
+    prop = validate_and_dump(TestSchema())["definitions"]["TestSchema"]["properties"][
+        "coords"
+    ]
+    assert "anyOf" in prop
+    assert {"type": "null"} in prop["anyOf"]
+
+
+def test_constant_field_allow_none():
+    class TestSchema(Schema):
+        version = fields.Constant("v2", allow_none=True)
+
+    prop = validate_and_dump(TestSchema())["definitions"]["TestSchema"]["properties"][
+        "version"
+    ]
+    assert "anyOf" in prop
+    assert {"type": "null"} in prop["anyOf"]
+    assert {"const": "v2", "type": "string"} in prop["anyOf"]
+
+
+def test_definitions_path_rejects_non_str():
+    """`definitions_path=None` would later crash with `TypeError: argument
+    of type 'NoneType' is not iterable`. Catch it at construction with a
+    clear `UnsupportedValueError`."""
+    with pytest.raises(UnsupportedValueError):
+        JSONSchema(definitions_path=None)
+    with pytest.raises(UnsupportedValueError):
+        JSONSchema(definitions_path="")
+    with pytest.raises(UnsupportedValueError):
+        JSONSchema(definitions_path=123)
+
+
 def test_field_subclass():
     """JSON schema generation should not fail on sublcass marshmallow field."""
 
@@ -737,10 +939,11 @@ def test_props_ordered_propagates_to_nested():
 
 
 def test_definitions_path_custom():
-    """The `definitions_path` constructor argument should reshape both the
-    root key holding nested definitions and the emitted $ref paths.
-    Useful for targeting OpenAPI, which uses `components/schemas` instead
-    of `definitions`."""
+    """The `definitions_path` constructor argument reshapes both the root
+    key holding nested definitions and the emitted $ref paths. Must be
+    a single segment - multi-segment paths are rejected because they'd
+    produce a flat dict key with a slash in it rather than a nested
+    structure."""
 
     class Inner(Schema):
         foo = fields.Integer()
@@ -748,15 +951,22 @@ def test_definitions_path_custom():
     class Outer(Schema):
         inner = fields.Nested(Inner)
 
-    dumped = JSONSchema(definitions_path="components/schemas").dump(Outer())
+    dumped = JSONSchema(definitions_path="schemas").dump(Outer())
 
     assert "definitions" not in dumped
-    assert "components/schemas" in dumped
-    assert dumped["$ref"] == "#/components/schemas/Outer"
+    assert "schemas" in dumped
+    assert dumped["$ref"] == "#/schemas/Outer"
     assert (
-        dumped["components/schemas"]["Outer"]["properties"]["inner"]["$ref"]
-        == "#/components/schemas/Inner"
+        dumped["schemas"]["Outer"]["properties"]["inner"]["$ref"] == "#/schemas/Inner"
     )
+
+
+def test_definitions_path_rejects_multi_segment():
+    """A multi-segment path would silently produce a flat dict key with
+    slashes in it instead of the nested structure OpenAPI consumers
+    expect, so we reject it at construction time."""
+    with pytest.raises(UnsupportedValueError):
+        JSONSchema(definitions_path="components/schemas")
 
 
 def test_sorting_properties():

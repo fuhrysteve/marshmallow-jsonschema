@@ -6,13 +6,33 @@ from enum import Enum
 from inspect import isclass, signature
 import typing
 
+from importlib.metadata import version as _pkg_version
+
 from marshmallow import fields, missing, Schema, validate
 from marshmallow.class_registry import get_class
 from marshmallow.decorators import post_dump
-from marshmallow.utils import _Missing
 
 from marshmallow import INCLUDE, EXCLUDE, RAISE
 
+# Major-version sniff so callers can branch on m3 vs m4 if they need to.
+# Used internally to gate features that the underlying marshmallow
+# release no longer provides (Schema(context=...), Schema.context, etc.).
+# marshmallow 3 exposed `__version__` directly; marshmallow 4 dropped it,
+# so read the installed distribution version instead. Fall back to 3 if
+# the metadata isn't present (e.g. a vendored copy with no dist-info).
+MARSHMALLOW_MAJOR: int
+try:
+    MARSHMALLOW_MAJOR = int(_pkg_version("marshmallow").split(".", 1)[0])
+except Exception:
+    MARSHMALLOW_MAJOR = 3
+
+# marshmallow 3.x exposed the private `_Missing` type on `marshmallow.utils`;
+# marshmallow 4.x removed it. Keep the runtime constant for any external
+# consumer that imported it from us in the past, but use `typing.Any` in
+# our own annotations so mypy is happy on both versions.
+_Missing = type(missing)
+
+ALLOW_UNIONS: bool
 try:
     from marshmallow_union import Union
 
@@ -20,6 +40,7 @@ try:
 except ImportError:
     ALLOW_UNIONS = False
 
+ALLOW_MARSHMALLOW_ENUM: bool
 try:
     from marshmallow_enum import EnumField, LoadDumpOptions
 
@@ -27,6 +48,7 @@ try:
 except ImportError:
     ALLOW_MARSHMALLOW_ENUM = False
 
+ALLOW_NATIVE_ENUM: bool
 try:
     from marshmallow.fields import Enum as NativeEnumField
 
@@ -37,7 +59,7 @@ except ImportError:
 # Backward-compat alias: historically this meant "marshmallow_enum is
 # importable", and external code has checked it as such. Keep it pointed
 # at the third-party flag so the semantic doesn't shift under callers.
-ALLOW_ENUMS = ALLOW_MARSHMALLOW_ENUM
+ALLOW_ENUMS: bool = ALLOW_MARSHMALLOW_ENUM
 
 from .exceptions import UnsupportedValueError
 from .validation import (
@@ -190,11 +212,35 @@ class JSONSchema(Schema):
                                    else will using sorting, default is `False`.
                                    Note: For the marshmallow scheme, also need to enable
                                    ordering of fields too (via `class Meta`, attribute `ordered`).
+        :param str definitions_path: name of the top-level dict key holding nested
+                                     schema definitions and the JSON pointer segment
+                                     used in $ref strings. Default is `"definitions"`.
+                                     Must be a single segment (no `/`); rejected with
+                                     `UnsupportedValueError` otherwise.
         """
         self._nested_schema_classes: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
         self.nested = kwargs.pop("nested", False)
         self.props_ordered = kwargs.pop("props_ordered", False)
         self.definitions_path = kwargs.pop("definitions_path", "definitions")
+        # `definitions_path` ends up both as a JSON-pointer segment in $ref
+        # strings AND as a top-level dict key in the output. Validate it
+        # up-front so we surface a clear error instead of a confusing
+        # downstream crash:
+        #  - must be a non-empty str (rules out None / int / "")
+        #  - must be a single segment (multi-segment paths like
+        #    "components/schemas" produce a flat dict key with a slash in
+        #    it rather than the nested structure consumers expect)
+        if not isinstance(self.definitions_path, str) or not self.definitions_path:
+            raise UnsupportedValueError(
+                "`definitions_path` must be a non-empty str (got %r)"
+                % (self.definitions_path,)
+            )
+        if "/" in self.definitions_path:
+            raise UnsupportedValueError(
+                "`definitions_path` must be a single segment (got "
+                "%r); nested paths require post-processing the output."
+                % self.definitions_path
+            )
         setattr(self.opts, "ordered", self.props_ordered)
         super().__init__(*args, **kwargs)
 
@@ -218,7 +264,7 @@ class JSONSchema(Schema):
 
         return properties
 
-    def get_required(self, obj) -> typing.Union[typing.List[str], _Missing]:
+    def get_required(self, obj) -> typing.Union[typing.List[str], typing.Any]:
         """Fill out required field."""
         required = []
         if callable(obj):
@@ -311,6 +357,111 @@ class JSONSchema(Schema):
             ]
         }
 
+    def _wrap_allow_none(self, schema, field):
+        """If ``field.allow_none`` is set, wrap the schema in
+        ``anyOf: [<schema>, {"type": "null"}]``. Returns the new schema
+        (or the original if allow_none is False). Mirrors
+        ``_from_nested_schema``'s allow_none handling so the new
+        Tuple / Constant / Pluck handlers stay consistent with it."""
+        if field.allow_none:
+            return {"anyOf": [schema, {"type": "null"}]}
+        return schema
+
+    def _from_tuple_field(self, obj, field):
+        """`fields.Tuple([Inner1(), Inner2(), ...])` is a fixed-length
+        positional sequence; we emit Draft-7's array form with a
+        positional `items` schema list and `min/maxItems` pinning the
+        length so a JSON Schema validator rejects wrong-arity inputs.
+        """
+        item_schemas = [
+            self._get_schema_for_field(obj, sub) for sub in field.tuple_fields
+        ]
+        schema = {
+            "type": "array",
+            "items": item_schemas,
+            "minItems": len(item_schemas),
+            "maxItems": len(item_schemas),
+        }
+        # Apply the outer Tuple field's metadata / dump_only / dump_default
+        # so callers can attach a title or description like they would on
+        # any other field type.
+        self._apply_custom_field_attributes(schema, field)
+        return self._wrap_allow_none(schema, field)
+
+    def _from_constant_field(self, obj, field):
+        """`fields.Constant(value)` always serializes to a fixed value;
+        emit JSON Schema's `const`. Also try to emit a matching `type`
+        when the constant maps cleanly to one of our known Python -> JSON
+        type pairs - some validators are happier with both."""
+        schema: typing.Dict[str, typing.Any] = {}
+        if _is_json_serializable(field.constant):
+            schema["const"] = field.constant
+        py_type = type(field.constant)
+        if py_type in PY_TO_JSON_TYPES_MAP:
+            for key, val in PY_TO_JSON_TYPES_MAP[py_type].items():
+                schema[key] = val
+        # Apply the field's metadata / dump_only so callers can attach a
+        # title or description.
+        self._apply_custom_field_attributes(schema, field)
+        # `fields.Constant` sets `dump_default = constant` internally,
+        # so the metadata pass would emit a `default` matching the
+        # `const` we already wrote. Strip the redundant key.
+        if "const" in schema and schema.get("default") == schema["const"]:
+            schema.pop("default", None)
+        return self._wrap_allow_none(schema, field)
+
+    def _from_pluck_field(self, obj, field):
+        """`fields.Pluck(NestedSchema, "x")` extracts a single field from
+        a nested schema. We emit the picked field's schema directly,
+        not a `$ref` to the whole nested definition - otherwise the
+        emitted shape would describe the wrong type entirely.
+        """
+        nested = field.nested
+        if isinstance(nested, (str, bytes)):
+            nested = get_class(nested)
+        if isclass(nested) and issubclass(nested, Schema):
+            try:
+                nested_instance = nested(context=obj.context)
+            except (AttributeError, TypeError):
+                nested_instance = nested()
+        elif callable(nested):
+            nested_instance = nested()
+        else:
+            nested_instance = nested
+
+        picked = nested_instance.fields[field.field_name]
+        schema = self._get_schema_for_field(obj, picked)
+
+        # Overlay outer Pluck-field attributes (metadata, dump_default,
+        # dump_only) on top of the picked field's schema. Users who set
+        # these on a Pluck field are describing the OUTER reference, so
+        # direct assignment (rather than setdefault) is the right
+        # precedence here - the outer description wins over whatever the
+        # inner picked field happened to derive automatically.
+        if field.dump_only:
+            schema["readOnly"] = True
+        if field.dump_default is not missing and not callable(field.dump_default):
+            if _is_json_serializable(field.dump_default):
+                schema["default"] = field.dump_default
+        metadata = field.metadata.get("metadata", {})
+        metadata.update(field.metadata)
+        for md_key, md_val in metadata.items():
+            if md_key in ("metadata", "name"):
+                continue
+            schema[md_key] = md_val
+
+        schema = self._wrap_allow_none(schema, field)
+
+        if field.many:
+            # Match `_from_nested_schema`'s many-handling: an optional
+            # many-array can also be null, while a required one must be
+            # an array.
+            schema = {
+                "type": "array" if field.required else ["array", "null"],
+                "items": schema,
+            }
+        return schema
+
     def _get_python_type(self, field):
         """Get python type based on field subclass"""
         for map_class, pytype in MARSHMALLOW_TO_PY_TYPES_PAIRS:
@@ -366,9 +517,18 @@ class JSONSchema(Schema):
             schema = field.metadata["_jsonschema_type_mapping"]
             self._apply_custom_field_attributes(schema, field)
         else:
-            if isinstance(field, fields.Nested):
+            # Pluck is a Nested subclass, so it must be checked first.
+            if isinstance(field, fields.Pluck):
+                schema = self._from_pluck_field(obj, field)
+            elif isinstance(field, fields.Nested):
                 # Special treatment for nested fields.
                 schema = self._from_nested_schema(obj, field)
+            elif hasattr(fields, "Tuple") and isinstance(field, fields.Tuple):
+                # `fields.Tuple` was added in marshmallow 3.16; the
+                # hasattr guard keeps us importable on 3.13-3.15.
+                schema = self._from_tuple_field(obj, field)
+            elif isinstance(field, fields.Constant):
+                schema = self._from_constant_field(obj, field)
             elif ALLOW_UNIONS and isinstance(field, Union):
                 schema = self._from_union_schema(obj, field)
             else:
@@ -400,7 +560,16 @@ class JSONSchema(Schema):
             only = field.only
             exclude = field.exclude
             nested_cls = nested
-            nested_instance = nested(only=only, exclude=exclude, context=obj.context)
+            # marshmallow 3 accepts `context` as a constructor kwarg and
+            # exposes it as a Schema attribute; marshmallow 4 removed both
+            # in favor of `contextvars.ContextVar`. Forward context on m3
+            # where possible and fall back gracefully on m4.
+            try:
+                nested_instance = nested(
+                    only=only, exclude=exclude, context=obj.context
+                )
+            except (AttributeError, TypeError):
+                nested_instance = nested(only=only, exclude=exclude)
         elif callable(nested):
             nested_instance = nested()
             nested_type = type(nested_instance)
@@ -466,8 +635,14 @@ class JSONSchema(Schema):
             "$ref": "#/{}/{}".format(self.definitions_path, name),
         }
 
-    def dump(self, obj, **kwargs):
-        """Take obj for later use: using class name to namespace definition."""
+    def dump(self, obj, **kwargs) -> typing.Dict[str, typing.Any]:
+        """Render `obj` as a JSON Schema dict.
+
+        Narrower return type than the base `Schema.dump`'s
+        `dict | list | None` because `JSONSchema` always wraps the
+        output in a single root dict (`$schema` + `definitions` +
+        `$ref`).
+        """
         self.obj = obj
         return super().dump(obj, **kwargs)
 
