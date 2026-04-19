@@ -367,6 +367,9 @@ class JSONSchema(Schema):
         if field.dump_default is not missing and not callable(field.dump_default):
             schema["default"] = nested_instance.dump(field.dump_default)
 
+        if field.allow_none:
+            schema = {"anyOf": [schema, {"type": "null"}]}
+
         if field.many:
             schema = {
                 "type": "array" if field.required else ["array", "null"],
