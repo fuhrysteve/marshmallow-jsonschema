@@ -5,7 +5,7 @@ from marshmallow_jsonschema import JSONSchema
 
 
 class Address(Schema):
-    id = fields.String(default="no-id")
+    id = fields.String(dump_default="no-id")
     street = fields.String(required=True)
     number = fields.String(required=True)
     city = fields.String(required=True)
@@ -27,7 +27,7 @@ class UserSchema(Schema):
     updated_naive = fields.NaiveDateTime(attribute="updated", dump_only=True)
     updated = fields.DateTime()
     species = fields.String(attribute="SPECIES")
-    id = fields.String(default="no-id")
+    id = fields.String(dump_default="no-id")
     homepage = fields.Url()
     email = fields.Email()
     balance = fields.Decimal()

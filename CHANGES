@@ -6,6 +6,9 @@ unreleased
       third-party package and added `ALLOW_NATIVE_ENUM` for the in-tree
       field. `ALLOW_ENUMS` is retained as a backward-compatible alias
       (True when either is active).
+    - Replace deprecated `field.default` reads with `field.dump_default` to
+      silence `RemovedInMarshmallow4Warning`. Minimum supported marshmallow
+      is now 3.13. #158, #167
 
 0.13.0 (2021-10-21)
     - Fixes to field default #151
