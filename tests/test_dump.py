@@ -1,6 +1,7 @@
 import uuid
 from enum import Enum
 
+import jsonschema
 import pytest
 from marshmallow import Schema, fields, validate
 from marshmallow_enum import EnumField
@@ -694,6 +695,25 @@ def test_enum_based_load_dump_value():
 
     with pytest.raises(NotImplementedError):
         validate_and_dump(schema)
+
+
+def test_integer_field_emits_integer_type():
+    """Regression test for #117 — Integer fields must emit `type: integer`,
+    not `type: number` with a `format: integer`. Otherwise floats validate
+    against integer fields."""
+
+    class Foo(Schema):
+        bar = fields.Integer()
+
+    schema = JSONSchema().dump(Foo())
+    bar_property = schema["definitions"]["Foo"]["properties"]["bar"]
+
+    assert bar_property["type"] == "integer"
+    assert "format" not in bar_property
+
+    jsonschema.validate({"bar": 1}, schema)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate({"bar": 1.1}, schema)
 
 
 @pytest.mark.skipif(
