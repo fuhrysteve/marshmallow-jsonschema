@@ -83,6 +83,60 @@ def test_additional_properties_from_nested_meta(additional_properties_value):
     )
 
 
+def test_schema_level_title_propagates():
+    class TestSchema(Schema):
+        class Meta:
+            title = "My Nice Title"
+
+        foo = fields.Integer()
+
+    dumped = validate_and_dump(TestSchema())
+    assert dumped["definitions"]["TestSchema"]["title"] == "My Nice Title"
+
+
+def test_schema_level_description_propagates():
+    class TestSchema(Schema):
+        class Meta:
+            description = "My lengthy description."
+
+        foo = fields.Integer()
+
+    dumped = validate_and_dump(TestSchema())
+    assert (
+        dumped["definitions"]["TestSchema"]["description"] == "My lengthy description."
+    )
+
+
+def test_schema_level_meta_string_on_nested():
+    class TestNestedSchema(Schema):
+        class Meta:
+            title = "Inner Title"
+            description = "Inner description."
+
+        foo = fields.Integer()
+
+    class TestSchema(Schema):
+        nested = fields.Nested(TestNestedSchema())
+
+    dumped = validate_and_dump(TestSchema())
+    nested_def = dumped["definitions"]["TestNestedSchema"]
+    assert nested_def["title"] == "Inner Title"
+    assert nested_def["description"] == "Inner description."
+
+
+@pytest.mark.parametrize("meta_key", ("title", "description"))
+def test_schema_level_meta_string_rejects_non_str(meta_key):
+    class TestSchema(Schema):
+        foo = fields.Integer()
+
+    setattr(TestSchema.Meta, meta_key, 123)
+    try:
+        with pytest.raises(UnsupportedValueError):
+            JSONSchema().dump(TestSchema())
+    finally:
+        delattr(TestSchema.Meta, meta_key)
+
+
 @pytest.mark.parametrize(
     "unknown_value, additional_properties",
     ((RAISE, False), (INCLUDE, True), (EXCLUDE, False)),

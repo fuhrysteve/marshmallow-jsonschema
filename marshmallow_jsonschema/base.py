@@ -163,6 +163,19 @@ def _resolve_additional_properties(cls) -> bool:
         raise UnsupportedValueError("Unknown value %s for `unknown`" % unknown)
 
 
+def _resolve_schema_meta_string(cls, name):
+    """Read a string option off ``cls.Meta`` and validate it. Returns None
+    when the option isn't set. Raises ``UnsupportedValueError`` if present
+    but not a str, so callers get a clear error instead of a silently
+    malformed schema."""
+    value = getattr(cls.Meta, name, None)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise UnsupportedValueError("`{}` must be a str".format(name))
+    return value
+
+
 class JSONSchema(Schema):
     """Converts to JSONSchema as defined by http://json-schema.org/."""
 
@@ -412,6 +425,10 @@ class JSONSchema(Schema):
             wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
                 nested_cls
             )
+            for meta_key in ("title", "description"):
+                value = _resolve_schema_meta_string(nested_cls, meta_key)
+                if value is not None:
+                    wrapped_dumped[meta_key] = value
 
             self._nested_schema_classes[name] = wrapped_dumped
 
@@ -464,6 +481,10 @@ class JSONSchema(Schema):
         name = cls.__name__
 
         data["additionalProperties"] = _resolve_additional_properties(cls)
+        for meta_key in ("title", "description"):
+            value = _resolve_schema_meta_string(cls, meta_key)
+            if value is not None:
+                data[meta_key] = value
 
         self._nested_schema_classes[name] = data
         root = {
