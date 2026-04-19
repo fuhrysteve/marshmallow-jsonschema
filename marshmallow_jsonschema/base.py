@@ -164,6 +164,7 @@ class JSONSchema(Schema):
         self._nested_schema_classes: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
         self.nested = kwargs.pop("nested", False)
         self.props_ordered = kwargs.pop("props_ordered", False)
+        self.definitions_path = kwargs.pop("definitions_path", "definitions")
         setattr(self.opts, "ordered", self.props_ordered)
         super().__init__(*args, **kwargs)
 
@@ -344,7 +345,9 @@ class JSONSchema(Schema):
         # put it in our list of schema defs
         if name not in self._nested_schema_classes and name != outer_name:
             wrapped_nested = self.__class__(
-                nested=True, props_ordered=self.props_ordered
+                nested=True,
+                props_ordered=self.props_ordered,
+                definitions_path=self.definitions_path,
             )
             wrapped_dumped = wrapped_nested.dump(nested_instance)
 
@@ -383,7 +386,10 @@ class JSONSchema(Schema):
         return schema
 
     def _schema_base(self, name):
-        return {"type": "object", "$ref": "#/definitions/{}".format(name)}
+        return {
+            "type": "object",
+            "$ref": "#/{}/{}".format(self.definitions_path, name),
+        }
 
     def dump(self, obj, **kwargs):
         """Take obj for later use: using class name to namespace definition."""
@@ -404,7 +410,7 @@ class JSONSchema(Schema):
         self._nested_schema_classes[name] = data
         root = {
             "$schema": "http://json-schema.org/draft-07/schema#",
-            "definitions": self._nested_schema_classes,
-            "$ref": "#/definitions/{name}".format(name=name),
+            self.definitions_path: self._nested_schema_classes,
+            "$ref": "#/{path}/{name}".format(path=self.definitions_path, name=name),
         }
         return root
