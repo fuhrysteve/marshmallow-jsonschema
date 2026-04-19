@@ -2,7 +2,7 @@ from enum import Enum
 
 import pytest
 from marshmallow import Schema, fields, validate
-from marshmallow.validate import OneOf, Range
+from marshmallow.validate import ContainsOnly, OneOf, Range
 from marshmallow_enum import EnumField
 from marshmallow_union import Union
 
@@ -75,6 +75,58 @@ def test_one_of_empty_enum():
     foo_property = dumped["definitions"]["TestSchema"]["properties"]["foo"]
     assert foo_property["enum"] == []
     assert foo_property["enumNames"] == []
+
+
+def test_contains_only_validator():
+    class TestSchema(Schema):
+        foo = fields.List(
+            fields.String,
+            validate=ContainsOnly(
+                choices=["apple", "lime", "orange"],
+                labels=["Apple", "Lime", "Orange"],
+            ),
+        )
+
+    schema = TestSchema()
+    dumped = validate_and_dump(schema)
+
+    foo_property = dumped["definitions"]["TestSchema"]["properties"]["foo"]
+    assert foo_property["uniqueItems"] is True
+    assert foo_property["items"]["anyOf"] == [
+        {"type": "string", "title": "Apple", "const": "apple"},
+        {"type": "string", "title": "Lime", "const": "lime"},
+        {"type": "string", "title": "Orange", "const": "orange"},
+    ]
+
+
+def test_contains_only_empty_choices():
+    """Empty choices should not emit an anyOf or uniqueItems."""
+
+    class TestSchema(Schema):
+        foo = fields.List(fields.String, validate=ContainsOnly(choices=[]))
+
+    schema = TestSchema()
+    dumped = validate_and_dump(schema)
+
+    foo_property = dumped["definitions"]["TestSchema"]["properties"]["foo"]
+    assert "anyOf" not in foo_property["items"]
+    assert "uniqueItems" not in foo_property
+
+
+def test_contains_only_on_non_array_field_is_noop():
+    """ContainsOnly on a non-array field shouldn't crash or wrap items."""
+
+    class TestSchema(Schema):
+        foo = fields.String(
+            validate=ContainsOnly(choices=["a", "b"], labels=["A", "B"])
+        )
+
+    schema = TestSchema()
+    dumped = validate_and_dump(schema)
+
+    foo_property = dumped["definitions"]["TestSchema"]["properties"]["foo"]
+    assert "uniqueItems" not in foo_property
+    assert "items" not in foo_property
 
 
 def test_range():

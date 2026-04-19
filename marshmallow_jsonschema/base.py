@@ -40,6 +40,7 @@ ALLOW_ENUMS = ALLOW_MARSHMALLOW_ENUM
 
 from .exceptions import UnsupportedValueError
 from .validation import (
+    handle_contains_only,
     handle_equal,
     handle_length,
     handle_one_of,
@@ -113,6 +114,7 @@ if ALLOW_NATIVE_ENUM:
 
 
 FIELD_VALIDATORS = {
+    validate.ContainsOnly: handle_contains_only,
     validate.Equal: handle_equal,
     validate.Length: handle_length,
     validate.OneOf: handle_one_of,
