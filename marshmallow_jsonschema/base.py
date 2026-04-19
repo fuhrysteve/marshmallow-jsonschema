@@ -33,9 +33,10 @@ try:
 except ImportError:
     ALLOW_NATIVE_ENUM = False
 
-# Backward-compatible alias. External code has historically imported
-# `ALLOW_ENUMS` to detect whether *any* enum support is active.
-ALLOW_ENUMS = ALLOW_MARSHMALLOW_ENUM or ALLOW_NATIVE_ENUM
+# Backward-compat alias: historically this meant "marshmallow_enum is
+# importable", and external code has checked it as such. Keep it pointed
+# at the third-party flag so the semantic doesn't shift under callers.
+ALLOW_ENUMS = ALLOW_MARSHMALLOW_ENUM
 
 from .exceptions import UnsupportedValueError
 from .validation import (
