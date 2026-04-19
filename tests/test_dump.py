@@ -534,6 +534,27 @@ def test_metadata_direct_from_field():
     }
 
 
+def test_allow_none_on_nested():
+    """A Nested field with allow_none=True should produce anyOf [$ref, null]."""
+
+    class ChildSchema(Schema):
+        id = fields.Integer(required=True)
+
+    class TestSchema(Schema):
+        id = fields.Integer(required=True)
+        nested_fld = fields.Nested(ChildSchema, allow_none=True)
+
+    schema = TestSchema()
+    dumped = validate_and_dump(schema)
+
+    assert dumped["definitions"]["TestSchema"]["properties"]["nested_fld"] == {
+        "anyOf": [
+            {"type": "object", "$ref": "#/definitions/ChildSchema"},
+            {"type": "null"},
+        ]
+    }
+
+
 def test_allow_none():
     """A field with allow_none set to True should have type null as additional."""
 
