@@ -22,7 +22,7 @@ import pytest
 from marshmallow import Schema, fields, validate
 
 from marshmallow_jsonschema import JSONSchema, UnsupportedValueError
-from marshmallow_jsonschema.base import MARSHMALLOW_MAJOR
+from marshmallow_jsonschema.base import ALLOW_NATIVE_ENUM, MARSHMALLOW_MAJOR
 
 # --------------------------------------------------------------------------- #
 # Version sniff itself                                                         #
@@ -232,10 +232,12 @@ def test_regexp_validator_parity():
     assert prop["pattern"] == r"^\d+$"
 
 
+@pytest.mark.skipif(
+    not ALLOW_NATIVE_ENUM, reason="needs marshmallow>=3.18 for native Enum field"
+)
 def test_native_enum_parity():
     """marshmallow 3.18+ and marshmallow 4 both ship the native Enum
     field; output must be identical."""
-    pytest.importorskip("marshmallow.fields", reason="needs marshmallow")
     from marshmallow.fields import Enum as NativeEnum
 
     class Color(Enum):
@@ -292,9 +294,9 @@ def test_definitions_path_parity():
     class Outer(Schema):
         inner = fields.Nested(Inner)
 
-    dumped = JSONSchema(definitions_path="components/schemas").dump(Outer())
-    assert "components/schemas" in dumped
-    assert dumped["$ref"] == "#/components/schemas/Outer"
+    dumped = JSONSchema(definitions_path="schemas").dump(Outer())
+    assert "schemas" in dumped
+    assert dumped["$ref"] == "#/schemas/Outer"
 
 
 def test_props_ordered_parity():

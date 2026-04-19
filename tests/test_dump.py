@@ -741,10 +741,11 @@ def test_props_ordered_propagates_to_nested():
 
 
 def test_definitions_path_custom():
-    """The `definitions_path` constructor argument should reshape both the
-    root key holding nested definitions and the emitted $ref paths.
-    Useful for targeting OpenAPI, which uses `components/schemas` instead
-    of `definitions`."""
+    """The `definitions_path` constructor argument reshapes both the root
+    key holding nested definitions and the emitted $ref paths. Must be
+    a single segment - multi-segment paths are rejected because they'd
+    produce a flat dict key with a slash in it rather than a nested
+    structure."""
 
     class Inner(Schema):
         foo = fields.Integer()
@@ -752,15 +753,22 @@ def test_definitions_path_custom():
     class Outer(Schema):
         inner = fields.Nested(Inner)
 
-    dumped = JSONSchema(definitions_path="components/schemas").dump(Outer())
+    dumped = JSONSchema(definitions_path="schemas").dump(Outer())
 
     assert "definitions" not in dumped
-    assert "components/schemas" in dumped
-    assert dumped["$ref"] == "#/components/schemas/Outer"
+    assert "schemas" in dumped
+    assert dumped["$ref"] == "#/schemas/Outer"
     assert (
-        dumped["components/schemas"]["Outer"]["properties"]["inner"]["$ref"]
-        == "#/components/schemas/Inner"
+        dumped["schemas"]["Outer"]["properties"]["inner"]["$ref"] == "#/schemas/Inner"
     )
+
+
+def test_definitions_path_rejects_multi_segment():
+    """A multi-segment path would silently produce a flat dict key with
+    slashes in it instead of the nested structure OpenAPI consumers
+    expect, so we reject it at construction time."""
+    with pytest.raises(UnsupportedValueError):
+        JSONSchema(definitions_path="components/schemas")
 
 
 def test_sorting_properties():

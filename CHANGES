@@ -29,8 +29,11 @@
     - Emit schema-level `title` and `description` from `class Meta`.
       Non-string values raise `UnsupportedValueError`. (#41, #99)
     - Add `definitions_path` constructor kwarg (default `"definitions"`)
-      so the output can target OpenAPI's `#/components/schemas/...`
-      convention. Propagates to nested schemas. (#179)
+      so subclasses can rename the JSON pointer segment used for nested
+      schema refs. Must be a single segment - multi-segment paths are
+      rejected because they'd produce a flat dict key rather than the
+      nested structure consumers expect. Propagates to nested schemas.
+      (#179)
     - Honor `allow_none=True` on `Nested` fields: emits
       `anyOf: [<nested>, {"type": "null"}]`. (#101, #121, #122)
     - Apply `metadata={...}` and `dump_default` to fields that expose a

@@ -18,8 +18,12 @@ from marshmallow import INCLUDE, EXCLUDE, RAISE
 # Used internally to gate features that the underlying marshmallow
 # release no longer provides (Schema(context=...), Schema.context, etc.).
 # marshmallow 3 exposed `__version__` directly; marshmallow 4 dropped it,
-# so read the installed distribution version instead.
-MARSHMALLOW_MAJOR = int(_pkg_version("marshmallow").split(".", 1)[0])
+# so read the installed distribution version instead. Fall back to 3 if
+# the metadata isn't present (e.g. a vendored copy with no dist-info).
+try:
+    MARSHMALLOW_MAJOR = int(_pkg_version("marshmallow").split(".", 1)[0])
+except Exception:
+    MARSHMALLOW_MAJOR = 3
 
 # marshmallow 3.x exposed the private `_Missing` type on `marshmallow.utils`;
 # marshmallow 4.x removed it. Keep the runtime constant for any external
@@ -209,6 +213,17 @@ class JSONSchema(Schema):
         self.nested = kwargs.pop("nested", False)
         self.props_ordered = kwargs.pop("props_ordered", False)
         self.definitions_path = kwargs.pop("definitions_path", "definitions")
+        # `definitions_path` ends up both as a JSON-pointer segment in $ref
+        # strings AND as a top-level dict key in the output. Multi-segment
+        # paths like "components/schemas" produce a flat dict key with a
+        # slash in it, not a nested dict, so we reject them rather than
+        # silently emit something an OpenAPI consumer will misread.
+        if "/" in self.definitions_path:
+            raise UnsupportedValueError(
+                "`definitions_path` must be a single segment (got "
+                "%r); nested paths require post-processing the output."
+                % self.definitions_path
+            )
         setattr(self.opts, "ordered", self.props_ordered)
         super().__init__(*args, **kwargs)
 
