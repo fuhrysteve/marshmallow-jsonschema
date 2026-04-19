@@ -357,6 +357,16 @@ class JSONSchema(Schema):
             ]
         }
 
+    def _wrap_allow_none(self, schema, field):
+        """If ``field.allow_none`` is set, wrap the schema in
+        ``anyOf: [<schema>, {"type": "null"}]``. Returns the new schema
+        (or the original if allow_none is False). Mirrors
+        ``_from_nested_schema``'s allow_none handling so the new
+        Tuple / Constant / Pluck handlers stay consistent with it."""
+        if field.allow_none:
+            return {"anyOf": [schema, {"type": "null"}]}
+        return schema
+
     def _from_tuple_field(self, obj, field):
         """`fields.Tuple([Inner1(), Inner2(), ...])` is a fixed-length
         positional sequence; we emit Draft-7's array form with a
@@ -376,7 +386,7 @@ class JSONSchema(Schema):
         # so callers can attach a title or description like they would on
         # any other field type.
         self._apply_custom_field_attributes(schema, field)
-        return schema
+        return self._wrap_allow_none(schema, field)
 
     def _from_constant_field(self, obj, field):
         """`fields.Constant(value)` always serializes to a fixed value;
@@ -398,7 +408,7 @@ class JSONSchema(Schema):
         # `const` we already wrote. Strip the redundant key.
         if "const" in schema and schema.get("default") == schema["const"]:
             schema.pop("default", None)
-        return schema
+        return self._wrap_allow_none(schema, field)
 
     def _from_pluck_field(self, obj, field):
         """`fields.Pluck(NestedSchema, "x")` extracts a single field from
@@ -421,6 +431,27 @@ class JSONSchema(Schema):
 
         picked = nested_instance.fields[field.field_name]
         schema = self._get_schema_for_field(obj, picked)
+
+        # Overlay outer Pluck-field attributes (metadata, dump_default,
+        # dump_only) on top of the picked field's schema. Users who set
+        # these on a Pluck field are describing the OUTER reference, so
+        # direct assignment (rather than setdefault) is the right
+        # precedence here - the outer description wins over whatever the
+        # inner picked field happened to derive automatically.
+        if field.dump_only:
+            schema["readOnly"] = True
+        if field.dump_default is not missing and not callable(field.dump_default):
+            if _is_json_serializable(field.dump_default):
+                schema["default"] = field.dump_default
+        metadata = field.metadata.get("metadata", {})
+        metadata.update(field.metadata)
+        for md_key, md_val in metadata.items():
+            if md_key in ("metadata", "name"):
+                continue
+            schema[md_key] = md_val
+
+        schema = self._wrap_allow_none(schema, field)
+
         if field.many:
             # Match `_from_nested_schema`'s many-handling: an optional
             # many-array can also be null, while a required one must be

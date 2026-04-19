@@ -683,6 +683,63 @@ def test_constant_field_honors_metadata():
     assert prop["const"] == "v2"
 
 
+def test_pluck_field_allow_none():
+    """`Pluck(..., allow_none=True)` must wrap in anyOf [<schema>, null]
+    to match `Nested`'s allow_none behavior."""
+
+    class Inner(Schema):
+        id = fields.Integer()
+
+    class Outer(Schema):
+        member_id = fields.Pluck(Inner, "id", allow_none=True)
+
+    prop = validate_and_dump(Outer())["definitions"]["Outer"]["properties"]["member_id"]
+    assert prop == {"anyOf": [{"title": "id", "type": "integer"}, {"type": "null"}]}
+
+
+def test_pluck_field_outer_metadata_overrides():
+    """A Pluck field's outer `metadata={...}` should win over the picked
+    field's auto-derived attributes (the user is describing the OUTER
+    reference, not the inner picked field)."""
+
+    class Inner(Schema):
+        id = fields.Integer()
+
+    class Outer(Schema):
+        member_id = fields.Pluck(
+            Inner,
+            "id",
+            metadata={"title": "Member ID", "description": "A user reference"},
+        )
+
+    prop = validate_and_dump(Outer())["definitions"]["Outer"]["properties"]["member_id"]
+    assert prop["title"] == "Member ID"
+    assert prop["description"] == "A user reference"
+
+
+def test_tuple_field_allow_none():
+    class TestSchema(Schema):
+        coords = fields.Tuple([fields.Float(), fields.Float()], allow_none=True)
+
+    prop = validate_and_dump(TestSchema())["definitions"]["TestSchema"]["properties"][
+        "coords"
+    ]
+    assert "anyOf" in prop
+    assert {"type": "null"} in prop["anyOf"]
+
+
+def test_constant_field_allow_none():
+    class TestSchema(Schema):
+        version = fields.Constant("v2", allow_none=True)
+
+    prop = validate_and_dump(TestSchema())["definitions"]["TestSchema"]["properties"][
+        "version"
+    ]
+    assert "anyOf" in prop
+    assert {"type": "null"} in prop["anyOf"]
+    assert {"const": "v2", "type": "string"} in prop["anyOf"]
+
+
 def test_definitions_path_rejects_non_str():
     """`definitions_path=None` would later crash with `TypeError: argument
     of type 'NoneType' is not iterable`. Catch it at construction with a

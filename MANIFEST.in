@@ -1,3 +1,3 @@
 include README.md requirements.txt requirements-test.txt
-include LICENSE CHANGES
+include LICENSE CHANGES CONTRIBUTORS.md
 include marshmallow_jsonschema/py.typed
