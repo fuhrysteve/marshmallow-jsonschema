@@ -34,9 +34,8 @@ For older environments:
 
 ## Client tools that render forms from JSON Schema
 
-- [react-jsonschema-form](https://github.com/rjsf-team/react-jsonschema-form) (recommended) — see the React extension below.
-- [json-editor](https://github.com/json-editor/json-editor)
-- [brutusin/json-forms](https://github.com/brutusin/json-forms) (legacy; the maintained alternatives above are usually better today)
+- [react-jsonschema-form](https://github.com/rjsf-team/react-jsonschema-form) (React; see the extension section below)
+- [json-editor](https://github.com/json-editor/json-editor) (vanilla JS; used in `example/example.py`)
 
 ## Examples
 
@@ -125,12 +124,20 @@ both supported for recursive references.
 
 ### Flask + JSON Schema form rendering
 
-A complete runnable Flask example that exposes a marshmallow schema as
-JSON Schema and renders it as a form lives at [`example/example.py`](example/example.py).
-That example uses [brutusin/json-forms](https://github.com/brutusin/json-forms)
-on the JS side; for a more current alternative, see the
-[React-JSONSchema-Form Extension](#react-jsonschema-form-extension)
-section below.
+A complete runnable Flask example lives at
+[`example/example.py`](example/example.py). It exposes a marshmallow
+schema as JSON Schema and renders it as a form using
+[json-editor](https://github.com/json-editor/json-editor) — pure JS,
+no build pipeline, drop in via CDN:
+
+```
+pip install -r example/requirements.txt
+python example/example.py
+# open http://127.0.0.1:5000/
+```
+
+For a richer React-based alternative, see
+[`ReactJsonSchemaFormJSONSchema`](#react-jsonschema-form-extension) below.
 
 ## Validators
 
