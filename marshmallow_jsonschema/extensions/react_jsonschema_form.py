@@ -26,26 +26,26 @@ class ReactJsonSchemaFormJSONSchema(JSONSchema):
     json_schema, uischema = json_schema_obj.dump_with_uischema(MySchema())
     """
 
-    def dump_with_uischema(self, obj, many=None, *args):
-        """Runs both dump and dump_uischema"""
-        dump = self.dump(obj, *args, many=many)
-        uischema = self.dump_uischema(obj, *args, many=many)
-        return dump, uischema
+    def dump_with_uischema(self, obj, *, many=None):
+        """Runs both dump and dump_uischema."""
+        return self.dump(obj, many=many), self.dump_uischema(obj, many=many)
 
-    def dump_uischema(self, obj, many=None, *args):
+    def dump_uischema(self, obj, *, many=None):
         """
         Attempt to return something resembling a uiSchema compliant with
-        react-jsonschema-form
+        react-jsonschema-form.
 
-        See: https://react-jsonschema-form.readthedocs.io/en/latest/form-customization/#the-uischema-object
+        See: https://rjsf-team.github.io/react-jsonschema-form/docs/api-reference/uiSchema
         """
-        return dict(self._dump_uischema_iter(obj, *args, many=many))
+        return dict(self._dump_uischema_iter(obj, many=many))
 
-    def _dump_uischema_iter(self, obj, many=None, *args):
+    def _dump_uischema_iter(self, obj, *, many=None):
         """
-        This is simply implementing a Dictionary Iterator for
-        ReactJsonSchemaFormJSONSchema.dump_uischema
+        Dictionary-iterator backing ``dump_uischema``. ``many`` is accepted
+        for signature parity with ``dump`` but is currently unused — uiSchema
+        layout doesn't change for many-style dumps.
         """
+        del many  # accepted for signature parity, intentionally unused
 
         for k, v in getattr(obj.Meta, "react_uischema_extra", {}).items():
             yield k, v

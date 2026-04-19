@@ -20,6 +20,7 @@ from marshmallow import INCLUDE, EXCLUDE, RAISE
 # marshmallow 3 exposed `__version__` directly; marshmallow 4 dropped it,
 # so read the installed distribution version instead. Fall back to 3 if
 # the metadata isn't present (e.g. a vendored copy with no dist-info).
+MARSHMALLOW_MAJOR: int
 try:
     MARSHMALLOW_MAJOR = int(_pkg_version("marshmallow").split(".", 1)[0])
 except Exception:
@@ -31,6 +32,7 @@ except Exception:
 # our own annotations so mypy is happy on both versions.
 _Missing = type(missing)
 
+ALLOW_UNIONS: bool
 try:
     from marshmallow_union import Union
 
@@ -38,6 +40,7 @@ try:
 except ImportError:
     ALLOW_UNIONS = False
 
+ALLOW_MARSHMALLOW_ENUM: bool
 try:
     from marshmallow_enum import EnumField, LoadDumpOptions
 
@@ -45,6 +48,7 @@ try:
 except ImportError:
     ALLOW_MARSHMALLOW_ENUM = False
 
+ALLOW_NATIVE_ENUM: bool
 try:
     from marshmallow.fields import Enum as NativeEnumField
 
@@ -55,7 +59,7 @@ except ImportError:
 # Backward-compat alias: historically this meant "marshmallow_enum is
 # importable", and external code has checked it as such. Keep it pointed
 # at the third-party flag so the semantic doesn't shift under callers.
-ALLOW_ENUMS = ALLOW_MARSHMALLOW_ENUM
+ALLOW_ENUMS: bool = ALLOW_MARSHMALLOW_ENUM
 
 from .exceptions import UnsupportedValueError
 from .validation import (
@@ -573,8 +577,14 @@ class JSONSchema(Schema):
             "$ref": "#/{}/{}".format(self.definitions_path, name),
         }
 
-    def dump(self, obj, **kwargs):
-        """Take obj for later use: using class name to namespace definition."""
+    def dump(self, obj, **kwargs) -> typing.Dict[str, typing.Any]:
+        """Render `obj` as a JSON Schema dict.
+
+        Narrower return type than the base `Schema.dump`'s
+        `dict | list | None` because `JSONSchema` always wraps the
+        output in a single root dict (`$schema` + `definitions` +
+        `$ref`).
+        """
         self.obj = obj
         return super().dump(obj, **kwargs)
 
