@@ -159,6 +159,37 @@ if __name__ == '__main__':
 
 
 ### Advanced usage
+
+#### Schema-level title and description
+
+Setting `title` or `description` on a schema's inner `Meta` class
+emits them at the corresponding definition entry:
+
+```python
+class UserSchema(Schema):
+    class Meta:
+        title = "User"
+        description = "A user account record."
+
+    name = fields.String()
+```
+
+#### Customizing the `definitions` path
+
+By default nested schemas are placed under `#/definitions/<Name>`.
+Pass `definitions_path` to use a different single-segment key — for
+example to align with a wrapping document's conventions:
+
+```python
+JSONSchema(definitions_path="schemas").dump(MySchema())
+# {"$ref": "#/schemas/MySchema", "schemas": {...}, ...}
+```
+
+Multi-segment paths (`"components/schemas"`) are rejected because they
+would produce a flat dict key with a slash in it rather than the nested
+structure consumers expect — wrap the output yourself if you need that
+shape.
+
 #### Custom Type support
 
 Simply add a `_jsonschema_type_mapping` method to your field

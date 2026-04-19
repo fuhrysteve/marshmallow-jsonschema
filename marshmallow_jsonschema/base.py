@@ -208,6 +208,11 @@ class JSONSchema(Schema):
                                    else will using sorting, default is `False`.
                                    Note: For the marshmallow scheme, also need to enable
                                    ordering of fields too (via `class Meta`, attribute `ordered`).
+        :param str definitions_path: name of the top-level dict key holding nested
+                                     schema definitions and the JSON pointer segment
+                                     used in $ref strings. Default is `"definitions"`.
+                                     Must be a single segment (no `/`); rejected with
+                                     `UnsupportedValueError` otherwise.
         """
         self._nested_schema_classes: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
         self.nested = kwargs.pop("nested", False)
