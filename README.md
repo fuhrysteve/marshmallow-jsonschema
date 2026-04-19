@@ -1,6 +1,6 @@
 # marshmallow-jsonschema: JSON Schema formatting with marshmallow
 
-![Build Status](https://github.com/fuhrysteve/marshmallow-jsonschema/workflows/build/badge.svg)
+[![Build Status](https://github.com/fuhrysteve/marshmallow-jsonschema/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/fuhrysteve/marshmallow-jsonschema/actions/workflows/build.yml)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 
 `marshmallow-jsonschema` translates [marshmallow](https://marshmallow.readthedocs.io/)
