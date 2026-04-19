@@ -489,7 +489,15 @@ class JSONSchema(Schema):
             if issubclass(field.__class__, map_class):
                 return pytype
 
-        raise UnsupportedValueError("unsupported field type %s" % field)
+        raise UnsupportedValueError(
+            "Cannot derive a JSON Schema type for field "
+            "%s (class %s). To support a custom field, either "
+            "subclass an existing marshmallow field type "
+            "(e.g. `class MyField(fields.String): ...`) or add a "
+            "`_jsonschema_type_mapping(self)` method to the field "
+            'returning a JSON Schema dict like `{"type": "string"}`.'
+            % (getattr(field, "name", "<unnamed>"), type(field).__name__)
+        )
 
     def _call_jsonschema_type_mapping(self, obj, field):
         """Invoke the field's ``_jsonschema_type_mapping``, optionally passing

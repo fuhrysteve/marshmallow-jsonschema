@@ -766,6 +766,29 @@ def test_field_subclass():
         _ = validate_and_dump(schema)
 
 
+def test_unsupported_field_error_points_at_fix():
+    """The error raised for an unmappable custom field should tell the
+    user how to fix it: subclass an existing field type, or add
+    `_jsonschema_type_mapping`. Regression for #157."""
+
+    class PinCode(fields.Field):
+        pass
+
+    class TestSchema(Schema):
+        pin_code = PinCode()
+
+    with pytest.raises(UnsupportedValueError) as exc:
+        JSONSchema().dump(TestSchema())
+
+    msg = str(exc.value)
+    # Names the offending field and class so users can locate it quickly.
+    assert "pin_code" in msg
+    assert "PinCode" in msg
+    # Names both supported workarounds.
+    assert "_jsonschema_type_mapping" in msg
+    assert "subclass" in msg.lower()
+
+
 def test_readonly():
     class TestSchema(Schema):
         id = fields.Integer(required=True)
