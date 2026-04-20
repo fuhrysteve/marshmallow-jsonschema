@@ -122,6 +122,27 @@ Yields:
 `fields.Nested("Self")` and `fields.Nested(lambda: SomeSchema())` are
 both supported for recursive references.
 
+### Top-level array (`many=True`)
+
+Passing `many=True` to a schema describes a list of objects rather
+than a single one; the dumped JSON Schema reflects that with an array
+envelope:
+
+```python
+JSONSchema().dump(UserSchema(many=True))
+```
+
+Yields:
+
+```json
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "definitions": {"UserSchema": { ... }},
+    "type": "array",
+    "items": {"$ref": "#/definitions/UserSchema"}
+}
+```
+
 ### Flask + JSON Schema form rendering
 
 A complete runnable Flask example lives at
@@ -174,6 +195,24 @@ out of the box and emits the enum-member names. The third-party
 [marshmallow-enum](https://pypi.org/project/marshmallow-enum/)
 `EnumField` is also supported when installed; native Enum is preferred
 when both are present.
+
+`by_value=True` enums are supported when every member's value is a
+string — the common pattern for serialising enums as their string
+value in the wire format:
+
+```python
+class Status(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+class S(Schema):
+    status = fields.Enum(Status, by_value=True)
+# {"status": {"enum": ["active", "inactive"], "type": "string"}}
+```
+
+Mixed-type or non-string enum values still raise
+`NotImplementedError` — use the `class MyEnum(str, Enum)` pattern, or
+load by name instead.
 
 ## Advanced usage
 
