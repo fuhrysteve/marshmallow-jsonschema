@@ -1026,6 +1026,40 @@ def test_oneofschema_variant_nested_refs_preserved():
     assert "Address" in dumped["definitions"]
 
 
+def test_oneofschema_empty_type_schemas_raises():
+    """An empty `type_schemas` would emit `oneOf: []`, which is invalid
+    Draft-07. Refuse rather than produce a broken schema."""
+    from marshmallow_oneofschema import OneOfSchema
+    from marshmallow_jsonschema.exceptions import UnsupportedValueError
+
+    class S(OneOfSchema):
+        type_schemas: dict = {}
+
+    with pytest.raises(UnsupportedValueError, match="empty `type_schemas`"):
+        JSONSchema().dump(S())
+
+
+def test_oneofschema_meta_title_and_description_propagate():
+    """`Meta.title` / `Meta.description` on the OneOfSchema itself should
+    appear alongside the `oneOf` envelope, mirroring how they propagate
+    for regular schemas."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class A(Schema):
+        a = fields.Integer()
+
+    class S(OneOfSchema):
+        type_schemas = {"a": A}
+
+        class Meta:
+            title = "Polymorphic Thing"
+            description = "Either an A or something else later."
+
+    dumped = JSONSchema().dump(S())
+    assert dumped["title"] == "Polymorphic Thing"
+    assert dumped["description"] == "Either an A or something else later."
+
+
 def test_oneofschema_variant_field_collides_with_discriminator_raises():
     """If a variant declares its own field with the same name as the
     OneOfSchema's `type_field`, refuse to silently overwrite it - that

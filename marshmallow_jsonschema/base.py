@@ -712,6 +712,15 @@ class JSONSchema(Schema):
         variant are still propagated into the outer document, so
         `$ref`s inside the inlined variant resolve correctly.
         """
+        if not oneof_obj.type_schemas:
+            # `oneOf: []` is invalid per Draft-07 (must have >=1 element).
+            # An empty `type_schemas` is almost certainly a misconfiguration
+            # rather than an intentional "match nothing" schema.
+            raise UnsupportedValueError(
+                "OneOfSchema {!r} has empty `type_schemas`; cannot emit "
+                "`oneOf` with zero variants. Add at least one entry to "
+                "`type_schemas`.".format(oneof_obj.__class__.__name__)
+            )
         type_field = oneof_obj.type_field
         variants = []
         for type_value, schema_cls in oneof_obj.type_schemas.items():
@@ -780,10 +789,14 @@ class JSONSchema(Schema):
         envelope referencing each registered variant. Honors `many=True`
         by wrapping in an array."""
         variants = self._build_oneof_variants(obj)
-        body = {"oneOf": variants}
+        body: typing.Dict[str, typing.Any] = {"oneOf": variants}
+        for meta_key in ("title", "description"):
+            value = _resolve_schema_meta_string(obj.__class__, meta_key)
+            if value is not None:
+                body[meta_key] = value
         if self.nested:
             return body
-        root = {
+        root: typing.Dict[str, typing.Any] = {
             "$schema": "http://json-schema.org/draft-07/schema#",
             self.definitions_path: self._nested_schema_classes,
         }
