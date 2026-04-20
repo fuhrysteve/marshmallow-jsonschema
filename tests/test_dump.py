@@ -1130,6 +1130,24 @@ def test_raw_field_accepts_any_json_value():
         jsonschema_lib.validate({"blob": value}, schema)
 
 
+def test_raw_subclass_falls_through_to_get_python_type():
+    """`fields.Raw` itself emits a type-less schema (#120), but a user
+    subclass of `Raw` should still flow through `_get_python_type` and
+    pick up the existing `(Raw, str)` pair mapping. Locks in the
+    `type(field) is fields.Raw` exact-type check in
+    `_get_schema_for_field` so a future swap to `isinstance` doesn't
+    silently change the output for subclasses."""
+
+    class CustomRaw(fields.Raw):
+        pass
+
+    class S(Schema):
+        blob = CustomRaw()
+
+    field_schema = JSONSchema().dump(S())["definitions"]["S"]["properties"]["blob"]
+    assert field_schema["type"] == "string"
+
+
 def test_raw_field_carries_metadata_and_allow_none():
     """Raw fields should still pick up title/description/default/
     allow_none like any other field."""
