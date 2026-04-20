@@ -452,6 +452,18 @@ class JSONSchema(Schema):
             schema.pop("default", None)
         return self._wrap_allow_none(schema, field)
 
+    def _from_raw_field(self, obj, field):
+        """`fields.Raw` accepts any value with no formatting, so emit a
+        schema with no `type` constraint. Title, default, allow_none,
+        and metadata still apply via the shared attribute pass."""
+        schema: typing.Dict[str, typing.Any] = {}
+        self._apply_custom_field_attributes(schema, field)
+        # Default title to the field name if metadata didn't supply one.
+        # `setdefault` so user-provided metadata.title wins, matching
+        # `_from_python_type`'s precedence.
+        schema.setdefault("title", field.attribute or field.name or "")
+        return self._wrap_allow_none(schema, field)
+
     def _from_pluck_field(self, obj, field):
         """`fields.Pluck(NestedSchema, "x")` extracts a single field from
         a nested schema. We emit the picked field's schema directly,
@@ -581,6 +593,15 @@ class JSONSchema(Schema):
                 schema = self._from_constant_field(obj, field)
             elif ALLOW_UNIONS and isinstance(field, Union):
                 schema = self._from_union_schema(obj, field)
+            elif type(field) is fields.Raw:
+                # `fields.Raw` is "any value, no formatting" - emit a
+                # type-less schema so any JSON value validates. The
+                # historical mapping to `type: string` was wrong (it
+                # rejected numbers/objects/etc.); closes #120. Exact
+                # type check (not isinstance) so user subclasses of
+                # Raw with their own intent still go through the
+                # normal `_get_python_type` path.
+                schema = self._from_raw_field(obj, field)
             else:
                 pytype = self._get_python_type(field)
                 schema = self._from_python_type(obj, field, pytype)

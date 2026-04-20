@@ -1112,6 +1112,45 @@ def test_oneofschema_variant_field_collides_with_discriminator_raises():
         JSONSchema().dump(S())
 
 
+def test_raw_field_accepts_any_json_value():
+    """`fields.Raw` is "any value, no formatting"; the emitted schema
+    must not pin a `type`, otherwise valid wire payloads get rejected.
+    Regression for #120."""
+    import jsonschema as jsonschema_lib
+
+    class S(Schema):
+        blob = fields.Raw()
+
+    schema = JSONSchema().dump(S())
+    jsonschema_lib.Draft7Validator.check_schema(schema)
+    field_schema = schema["definitions"]["S"]["properties"]["blob"]
+    assert "type" not in field_schema
+    # Every JSON-valid value passes through.
+    for value in ["x", 1, 1.5, True, None, {"k": "v"}, [1, 2]]:
+        jsonschema_lib.validate({"blob": value}, schema)
+
+
+def test_raw_field_carries_metadata_and_allow_none():
+    """Raw fields should still pick up title/description/default/
+    allow_none like any other field."""
+
+    class S(Schema):
+        blob = fields.Raw(
+            allow_none=True,
+            dump_default="x",
+            metadata={"title": "Blob", "description": "anything"},
+        )
+
+    field_schema = JSONSchema().dump(S())["definitions"]["S"]["properties"]["blob"]
+    # allow_none wraps in anyOf
+    assert "anyOf" in field_schema
+    inner = field_schema["anyOf"][0]
+    assert inner["title"] == "Blob"
+    assert inner["description"] == "anything"
+    assert inner["default"] == "x"
+    assert field_schema["anyOf"][1] == {"type": "null"}
+
+
 def test_unsupported_field_error_points_at_fix():
     """The error raised for an unmappable custom field should tell the
     user how to fix it: subclass an existing field type, or add
