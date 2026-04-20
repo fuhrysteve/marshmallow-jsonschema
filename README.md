@@ -274,6 +274,56 @@ machinery (e.g. to emit a `$ref` to a recursive schema), declare
 `_jsonschema_type_mapping(self, json_schema, obj)` with the two extra
 parameters and the `JSONSchema` instance + obj will be passed in.
 
+### Polymorphic schemas (`marshmallow-oneofschema`)
+
+When the optional [`marshmallow-oneofschema`](https://github.com/marshmallow-code/marshmallow-oneofschema)
+package is installed, dumping a `OneOfSchema` produces a JSON Schema
+`oneOf` over each variant — with the discriminator field pinned to its
+constant value:
+
+```python
+from marshmallow import Schema, fields
+from marshmallow_oneofschema import OneOfSchema
+from marshmallow_jsonschema import JSONSchema
+
+class TriangleSchema(Schema):
+    base = fields.Float(required=True)
+    height = fields.Float(required=True)
+
+class CircleSchema(Schema):
+    radius = fields.Float(required=True)
+
+class ShapeSchema(OneOfSchema):
+    type_schemas = {"triangle": TriangleSchema, "circle": CircleSchema}
+
+JSONSchema().dump(ShapeSchema())
+```
+
+Yields (abbreviated):
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base": {"type": "number", "...": "..."},
+        "height": {"type": "number", "...": "..."},
+        "type": {"const": "triangle", "type": "string"}
+      },
+      "required": ["base", "height", "type"]
+    },
+    { "...circle variant...": "..." }
+  ]
+}
+```
+
+Variants are inlined (not `$ref`) so the schema actually validates the
+wire format `OneOfSchema` produces. Custom `type_field` (default
+`"type"`) is honored. Install with `pip install marshmallow-jsonschema[oneofschema]`.
+
 ### React-JSONSchema-Form Extension
 
 [react-jsonschema-form](https://rjsf-team.github.io/react-jsonschema-form/)

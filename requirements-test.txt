@@ -5,6 +5,7 @@ pytest-cov
 # Optional installs for the wheel, but always required for tests
 marshmallow-enum
 marshmallow-union
+marshmallow-oneofschema
 mypy>=1.1.1
 
 pre-commit~=2.15

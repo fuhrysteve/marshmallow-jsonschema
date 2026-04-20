@@ -849,6 +849,269 @@ def test_marshmallow_enum_by_value_strings():
     assert sorted(prop["enum"]) == ["active", "inactive"]
 
 
+def test_oneofschema_top_level_emits_oneof():
+    """`JSONSchema().dump(SomeOneOfSchema())` should emit a top-level
+    `oneOf` with each variant inlined and its discriminator pinned via
+    `const`. Closes #141."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class TriangleSchema(Schema):
+        base = fields.Float(required=True)
+
+    class CircleSchema(Schema):
+        radius = fields.Float(required=True)
+
+    class ShapeSchema(OneOfSchema):
+        type_schemas = {"triangle": TriangleSchema, "circle": CircleSchema}
+
+    dumped = JSONSchema().dump(ShapeSchema())
+
+    assert len(dumped["oneOf"]) == 2
+    by_const = {
+        variant["properties"]["type"]["const"]: variant for variant in dumped["oneOf"]
+    }
+    assert set(by_const) == {"triangle", "circle"}
+    # Each variant includes both the discriminator and its real fields.
+    assert set(by_const["triangle"]["properties"]) == {"type", "base"}
+    assert set(by_const["circle"]["properties"]) == {"type", "radius"}
+    # Discriminator is required so consumers can rely on it.
+    assert "type" in by_const["triangle"]["required"]
+
+
+def test_oneofschema_generated_schema_validates_wire_output():
+    """The generated `oneOf` schema must accept the wire format that
+    `OneOfSchema` produces (type + variant fields) and reject wrong
+    or missing discriminators. Regression guard for the validation gap
+    that motivated the design change."""
+    import jsonschema as jsonschema_lib
+    from marshmallow_oneofschema import OneOfSchema
+
+    class TriangleSchema(Schema):
+        base = fields.Float(required=True)
+        height = fields.Float(required=True)
+
+    class CircleSchema(Schema):
+        radius = fields.Float(required=True)
+
+    class ShapeSchema(OneOfSchema):
+        type_schemas = {"triangle": TriangleSchema, "circle": CircleSchema}
+
+    schema = JSONSchema().dump(ShapeSchema())
+
+    # The generated schema must itself be a valid Draft-7 schema.
+    jsonschema_lib.Draft7Validator.check_schema(schema)
+
+    # Valid wire formats pass.
+    jsonschema_lib.validate({"type": "triangle", "base": 3.0, "height": 4.0}, schema)
+    jsonschema_lib.validate({"type": "circle", "radius": 5.0}, schema)
+
+    # Unknown discriminator rejected.
+    with pytest.raises(jsonschema_lib.ValidationError):
+        jsonschema_lib.validate({"type": "square", "side": 5.0}, schema)
+
+    # Missing discriminator rejected.
+    with pytest.raises(jsonschema_lib.ValidationError):
+        jsonschema_lib.validate({"base": 3.0, "height": 4.0}, schema)
+
+    # Extra field rejected (additionalProperties: false on each variant).
+    with pytest.raises(jsonschema_lib.ValidationError):
+        jsonschema_lib.validate(
+            {"type": "triangle", "base": 3.0, "height": 4.0, "color": "red"}, schema
+        )
+
+
+def test_oneofschema_top_level_many_wraps_in_array():
+    """`OneOfSchema(many=True)` at the root should produce an array of
+    polymorphic instances."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class A(Schema):
+        a = fields.Integer()
+
+    class B(Schema):
+        b = fields.String()
+
+    class S(OneOfSchema):
+        type_schemas = {"a": A, "b": B}
+
+    dumped = JSONSchema().dump(S(many=True))
+    assert dumped["type"] == "array"
+    assert "oneOf" in dumped["items"]
+    assert "$ref" not in dumped
+
+
+def test_oneofschema_nested_emits_oneof_at_field():
+    """A `fields.Nested(MyOneOfSchema)` should emit an inline `oneOf`
+    directly in the field's schema, with each variant carrying its
+    discriminator."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class A(Schema):
+        a = fields.Integer()
+
+    class B(Schema):
+        b = fields.String()
+
+    class S(OneOfSchema):
+        type_schemas = {"a": A, "b": B}
+
+    class Container(Schema):
+        thing = fields.Nested(S)
+
+    dumped = validate_and_dump(Container())
+    field_schema = dumped["definitions"]["Container"]["properties"]["thing"]
+    assert "oneOf" in field_schema
+    consts = sorted(v["properties"]["type"]["const"] for v in field_schema["oneOf"])
+    assert consts == ["a", "b"]
+
+
+def test_oneofschema_nested_many_wraps_array():
+    """A `fields.Nested(MyOneOfSchema, many=True)` should array-wrap
+    the `oneOf` (and honor `field.required` like other Nested fields)."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class A(Schema):
+        a = fields.Integer()
+
+    class S(OneOfSchema):
+        type_schemas = {"a": A}
+
+    class Container(Schema):
+        things = fields.Nested(S, many=True, required=True)
+
+    dumped = validate_and_dump(Container())
+    field_schema = dumped["definitions"]["Container"]["properties"]["things"]
+    assert field_schema["type"] == "array"
+    assert "oneOf" in field_schema["items"]
+
+
+def test_oneofschema_custom_type_field():
+    """A OneOfSchema with a non-default `type_field` (e.g. `kind`)
+    should use that name as the discriminator in the emitted schemas."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class A(Schema):
+        a = fields.Integer()
+
+    class Dispatched(OneOfSchema):
+        type_field = "kind"
+        type_schemas = {"a": A}
+
+    dumped = JSONSchema().dump(Dispatched())
+    variant = dumped["oneOf"][0]
+    assert "kind" in variant["properties"]
+    assert variant["properties"]["kind"]["const"] == "a"
+    assert "kind" in variant["required"]
+
+
+def test_oneofschema_variant_nested_refs_preserved():
+    """When a OneOfSchema variant contains a Nested field, that inner
+    nested schema should still be registered as a top-level definition
+    so the inlined variant's `$ref` resolves."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class Address(Schema):
+        city = fields.String()
+
+    class Person(Schema):
+        name = fields.String()
+        address = fields.Nested(Address)
+
+    class Company(Schema):
+        name = fields.String()
+
+    class Party(OneOfSchema):
+        type_schemas = {"person": Person, "company": Company}
+
+    dumped = JSONSchema().dump(Party())
+    # Address is referenced $ref inside Person's inlined variant, so
+    # it must be registered as a definition.
+    assert "Address" in dumped["definitions"]
+
+
+def test_oneofschema_empty_type_schemas_raises():
+    """An empty `type_schemas` would emit `oneOf: []`, which is invalid
+    Draft-07. Refuse rather than produce a broken schema."""
+    from marshmallow_oneofschema import OneOfSchema
+    from marshmallow_jsonschema.exceptions import UnsupportedValueError
+
+    class S(OneOfSchema):
+        type_schemas: dict = {}
+
+    with pytest.raises(UnsupportedValueError, match="empty `type_schemas`"):
+        JSONSchema().dump(S())
+
+
+def test_oneofschema_meta_title_and_description_propagate():
+    """`Meta.title` / `Meta.description` on the OneOfSchema itself should
+    appear alongside the `oneOf` envelope, mirroring how they propagate
+    for regular schemas. Holds at the document root AND when used as a
+    nested field."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class A(Schema):
+        a = fields.Integer()
+
+    class S(OneOfSchema):
+        type_schemas = {"a": A}
+
+        class Meta:
+            title = "Polymorphic Thing"
+            description = "Either an A or something else later."
+
+    # Top-level dump.
+    dumped = JSONSchema().dump(S())
+    assert dumped["title"] == "Polymorphic Thing"
+    assert dumped["description"] == "Either an A or something else later."
+
+    # Nested-field dump - same Meta should surface at the field site
+    # since the OneOfSchema is inlined there (no separate definition).
+    class Container(Schema):
+        thing = fields.Nested(S)
+
+    nested_dumped = JSONSchema().dump(Container())
+    field_schema = nested_dumped["definitions"]["Container"]["properties"]["thing"]
+    assert field_schema["title"] == "Polymorphic Thing"
+    assert field_schema["description"] == "Either an A or something else later."
+
+
+def test_oneofschema_recursive_raises_clear_error():
+    """A OneOfSchema whose variant transitively references the same
+    OneOfSchema would naturally recurse forever (variants are inlined,
+    not registered as a $ref-able definition). Raise a clear error
+    instead of stack-overflowing."""
+    from marshmallow_oneofschema import OneOfSchema
+    from marshmallow_jsonschema.exceptions import UnsupportedValueError
+
+    class Node(Schema):
+        name = fields.String()
+        children = fields.List(fields.Nested(lambda: Tree()))
+
+    class Tree(OneOfSchema):
+        type_schemas = {"node": Node}
+
+    with pytest.raises(UnsupportedValueError, match="Recursive OneOfSchema"):
+        JSONSchema().dump(Tree())
+
+
+def test_oneofschema_variant_field_collides_with_discriminator_raises():
+    """If a variant declares its own field with the same name as the
+    OneOfSchema's `type_field`, refuse to silently overwrite it - that
+    would mask a real schema mismatch."""
+    from marshmallow_oneofschema import OneOfSchema
+    from marshmallow_jsonschema.exceptions import UnsupportedValueError
+
+    class Variant(Schema):
+        type = fields.String(required=True)
+        payload = fields.Integer()
+
+    class S(OneOfSchema):
+        type_schemas = {"a": Variant}
+
+    with pytest.raises(UnsupportedValueError, match="discriminator"):
+        JSONSchema().dump(S())
+
+
 def test_unsupported_field_error_points_at_fix():
     """The error raised for an unmappable custom field should tell the
     user how to fix it: subclass an existing field type, or add

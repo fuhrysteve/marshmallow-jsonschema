@@ -25,6 +25,7 @@ REQUIREMENTS_TESTS = open(
 EXTRAS_REQUIRE = {
     "enum": ["marshmallow-enum"],
     "union": ["marshmallow-union"],
+    "oneofschema": ["marshmallow-oneofschema"],
 }
 
 
