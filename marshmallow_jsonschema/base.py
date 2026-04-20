@@ -636,7 +636,7 @@ class JSONSchema(Schema):
         # `oneOf` over the variants instead. The many / allow_none /
         # metadata wrap below still applies to the resulting schema.
         if ALLOW_ONEOFSCHEMA and isinstance(nested_instance, OneOfSchema):
-            schema = {"oneOf": self._register_oneof_variants(nested_instance)}
+            schema = {"oneOf": self._build_oneof_variants(nested_instance)}
         else:
             outer_name = obj.__class__.__name__
             # If this is not a schema we've seen, and it's not this schema (checking this for recursive schemas),
@@ -695,45 +695,57 @@ class JSONSchema(Schema):
             "$ref": "#/{}/{}".format(self.definitions_path, name),
         }
 
-    def _register_oneof_variants(self, oneof_obj):
-        """Register each variant schema of a `OneOfSchema` instance as a
-        definition and return a list of `{"$ref": ...}` items suitable
-        for `oneOf`.
+    def _build_oneof_variants(self, oneof_obj):
+        """Build a self-contained schema for each variant of a
+        `OneOfSchema` and return a list suitable for `oneOf`.
 
-        Each variant gets its own definition under its own class name -
-        we don't try to encode the discriminator field as a `const` here
-        because each variant schema is meant to be reusable on its own,
-        and pinning the discriminator into the definition would pollute
-        it for the standalone case.
+        Each returned schema is inlined (not a `$ref`) so it can carry
+        the discriminator field as a `const`. This is what makes the
+        emitted `oneOf` actually validate the wire format that
+        `OneOfSchema` produces - by default `OneOfSchema` strips the
+        discriminator from the variant's own field set and re-injects
+        it at dump time, so a bare `$ref` to the variant's standalone
+        definition would reject the discriminator key under
+        `additionalProperties: false`.
+
+        Any nested-schema definitions discovered while dumping a
+        variant are still propagated into the outer document, so
+        `$ref`s inside the inlined variant resolve correctly.
         """
+        type_field = oneof_obj.type_field
         variants = []
         for type_value, schema_cls in oneof_obj.type_schemas.items():
-            name = schema_cls.__name__
-            if name not in self._nested_schema_classes:
-                wrapped_nested = self.__class__(
-                    nested=True,
-                    props_ordered=self.props_ordered,
-                    definitions_path=self.definitions_path,
-                )
-                wrapped_dumped = wrapped_nested.dump(schema_cls())
-                wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
-                    schema_cls
-                )
-                for meta_key in ("title", "description"):
-                    value = _resolve_schema_meta_string(schema_cls, meta_key)
-                    if value is not None:
-                        wrapped_dumped[meta_key] = value
-                self._nested_schema_classes[name] = wrapped_dumped
-                self._nested_schema_classes.update(
-                    wrapped_nested._nested_schema_classes
-                )
-            variants.append(
-                {
-                    "$ref": "#/{path}/{name}".format(
-                        path=self.definitions_path, name=name
-                    )
-                }
+            wrapped_nested = self.__class__(
+                nested=True,
+                props_ordered=self.props_ordered,
+                definitions_path=self.definitions_path,
             )
+            variant_schema = wrapped_nested.dump(schema_cls())
+            variant_schema["additionalProperties"] = _resolve_additional_properties(
+                schema_cls
+            )
+            for meta_key in ("title", "description"):
+                value = _resolve_schema_meta_string(schema_cls, meta_key)
+                if value is not None:
+                    variant_schema[meta_key] = value
+
+            # Inject the discriminator field as a const-valued property
+            # and add it to required so consumers can rely on it.
+            variant_schema.setdefault("properties", {})
+            variant_schema["properties"][type_field] = {
+                "type": "string",
+                "const": type_value,
+                "title": type_field,
+            }
+            existing_required = list(variant_schema.get("required", []))
+            if type_field not in existing_required:
+                variant_schema["required"] = sorted(existing_required + [type_field])
+
+            # Carry through any nested definitions discovered inside
+            # the variant - the inlined variant may still reference
+            # them via `$ref`.
+            self._nested_schema_classes.update(wrapped_nested._nested_schema_classes)
+            variants.append(variant_schema)
         return variants
 
     def dump(self, obj, **kwargs) -> typing.Dict[str, typing.Any]:
@@ -753,7 +765,7 @@ class JSONSchema(Schema):
         """Top-level dump for a `OneOfSchema` instance. Emits a `oneOf`
         envelope referencing each registered variant. Honors `many=True`
         by wrapping in an array."""
-        variants = self._register_oneof_variants(obj)
+        variants = self._build_oneof_variants(obj)
         body = {"oneOf": variants}
         if self.nested:
             return body
