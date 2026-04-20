@@ -849,6 +849,95 @@ def test_marshmallow_enum_by_value_strings():
     assert sorted(prop["enum"]) == ["active", "inactive"]
 
 
+def test_oneofschema_top_level_emits_oneof():
+    """`JSONSchema().dump(SomeOneOfSchema())` should emit a top-level
+    `oneOf` over the variant schemas instead of a useless empty
+    definition. Closes #141."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class TriangleSchema(Schema):
+        base = fields.Float(required=True)
+
+    class CircleSchema(Schema):
+        radius = fields.Float(required=True)
+
+    class ShapeSchema(OneOfSchema):
+        type_schemas = {"triangle": TriangleSchema, "circle": CircleSchema}
+
+    dumped = JSONSchema().dump(ShapeSchema())
+    refs = sorted(item["$ref"] for item in dumped["oneOf"])
+    assert refs == ["#/definitions/CircleSchema", "#/definitions/TriangleSchema"]
+    # Each variant is fully described under definitions.
+    assert sorted(dumped["definitions"]) == ["CircleSchema", "TriangleSchema"]
+    assert dumped["definitions"]["TriangleSchema"]["properties"]["base"]["type"] == (
+        "number"
+    )
+
+
+def test_oneofschema_top_level_many_wraps_in_array():
+    """`OneOfSchema(many=True)` at the root should produce an array of
+    polymorphic instances."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class A(Schema):
+        a = fields.Integer()
+
+    class B(Schema):
+        b = fields.String()
+
+    class S(OneOfSchema):
+        type_schemas = {"a": A, "b": B}
+
+    dumped = JSONSchema().dump(S(many=True))
+    assert dumped["type"] == "array"
+    assert "oneOf" in dumped["items"]
+    assert "$ref" not in dumped
+
+
+def test_oneofschema_nested_emits_oneof_at_field():
+    """A `fields.Nested(MyOneOfSchema)` should emit a `oneOf` directly
+    in the field's schema, not a `$ref` to a useless empty definition."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class A(Schema):
+        a = fields.Integer()
+
+    class B(Schema):
+        b = fields.String()
+
+    class S(OneOfSchema):
+        type_schemas = {"a": A, "b": B}
+
+    class Container(Schema):
+        thing = fields.Nested(S)
+
+    dumped = validate_and_dump(Container())
+    field_schema = dumped["definitions"]["Container"]["properties"]["thing"]
+    assert "oneOf" in field_schema
+    refs = sorted(item["$ref"] for item in field_schema["oneOf"])
+    assert refs == ["#/definitions/A", "#/definitions/B"]
+
+
+def test_oneofschema_nested_many_wraps_array():
+    """A `fields.Nested(MyOneOfSchema, many=True)` should array-wrap
+    the `oneOf` (and honor `field.required` like other Nested fields)."""
+    from marshmallow_oneofschema import OneOfSchema
+
+    class A(Schema):
+        a = fields.Integer()
+
+    class S(OneOfSchema):
+        type_schemas = {"a": A}
+
+    class Container(Schema):
+        things = fields.Nested(S, many=True, required=True)
+
+    dumped = validate_and_dump(Container())
+    field_schema = dumped["definitions"]["Container"]["properties"]["things"]
+    assert field_schema["type"] == "array"
+    assert "oneOf" in field_schema["items"]
+
+
 def test_unsupported_field_error_points_at_fix():
     """The error raised for an unmappable custom field should tell the
     user how to fix it: subclass an existing field type, or add

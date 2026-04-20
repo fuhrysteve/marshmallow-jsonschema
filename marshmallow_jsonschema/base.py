@@ -56,6 +56,14 @@ try:
 except ImportError:
     ALLOW_NATIVE_ENUM = False
 
+ALLOW_ONEOFSCHEMA: bool
+try:
+    from marshmallow_oneofschema import OneOfSchema
+
+    ALLOW_ONEOFSCHEMA = True
+except ImportError:
+    ALLOW_ONEOFSCHEMA = False
+
 # Backward-compat alias: historically this meant "marshmallow_enum is
 # importable", and external code has checked it as such. Keep it pointed
 # at the third-party flag so the semantic doesn't shift under callers.
@@ -622,31 +630,41 @@ class JSONSchema(Schema):
             name = nested_cls.__name__
             nested_instance = nested
 
-        outer_name = obj.__class__.__name__
-        # If this is not a schema we've seen, and it's not this schema (checking this for recursive schemas),
-        # put it in our list of schema defs
-        if name not in self._nested_schema_classes and name != outer_name:
-            wrapped_nested = self.__class__(
-                nested=True,
-                props_ordered=self.props_ordered,
-                definitions_path=self.definitions_path,
-            )
-            wrapped_dumped = wrapped_nested.dump(nested_instance)
+        # `marshmallow_oneofschema.OneOfSchema` dispatches to one of N
+        # variant schemas at runtime, so a single $ref to the OneOf
+        # class itself wouldn't describe any actual instance. Emit
+        # `oneOf` over the variants instead. The many / allow_none /
+        # metadata wrap below still applies to the resulting schema.
+        if ALLOW_ONEOFSCHEMA and isinstance(nested_instance, OneOfSchema):
+            schema = {"oneOf": self._register_oneof_variants(nested_instance)}
+        else:
+            outer_name = obj.__class__.__name__
+            # If this is not a schema we've seen, and it's not this schema (checking this for recursive schemas),
+            # put it in our list of schema defs
+            if name not in self._nested_schema_classes and name != outer_name:
+                wrapped_nested = self.__class__(
+                    nested=True,
+                    props_ordered=self.props_ordered,
+                    definitions_path=self.definitions_path,
+                )
+                wrapped_dumped = wrapped_nested.dump(nested_instance)
 
-            wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
-                nested_cls
-            )
-            for meta_key in ("title", "description"):
-                value = _resolve_schema_meta_string(nested_cls, meta_key)
-                if value is not None:
-                    wrapped_dumped[meta_key] = value
+                wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
+                    nested_cls
+                )
+                for meta_key in ("title", "description"):
+                    value = _resolve_schema_meta_string(nested_cls, meta_key)
+                    if value is not None:
+                        wrapped_dumped[meta_key] = value
 
-            self._nested_schema_classes[name] = wrapped_dumped
+                self._nested_schema_classes[name] = wrapped_dumped
 
-            self._nested_schema_classes.update(wrapped_nested._nested_schema_classes)
+                self._nested_schema_classes.update(
+                    wrapped_nested._nested_schema_classes
+                )
 
-        # and the schema is just a reference to the def
-        schema = self._schema_base(name)
+            # and the schema is just a reference to the def
+            schema = self._schema_base(name)
 
         # NOTE: doubled up to maintain backwards compatibility
         metadata = field.metadata.get("metadata", {})
@@ -677,6 +695,47 @@ class JSONSchema(Schema):
             "$ref": "#/{}/{}".format(self.definitions_path, name),
         }
 
+    def _register_oneof_variants(self, oneof_obj):
+        """Register each variant schema of a `OneOfSchema` instance as a
+        definition and return a list of `{"$ref": ...}` items suitable
+        for `oneOf`.
+
+        Each variant gets its own definition under its own class name -
+        we don't try to encode the discriminator field as a `const` here
+        because each variant schema is meant to be reusable on its own,
+        and pinning the discriminator into the definition would pollute
+        it for the standalone case.
+        """
+        variants = []
+        for type_value, schema_cls in oneof_obj.type_schemas.items():
+            name = schema_cls.__name__
+            if name not in self._nested_schema_classes:
+                wrapped_nested = self.__class__(
+                    nested=True,
+                    props_ordered=self.props_ordered,
+                    definitions_path=self.definitions_path,
+                )
+                wrapped_dumped = wrapped_nested.dump(schema_cls())
+                wrapped_dumped["additionalProperties"] = _resolve_additional_properties(
+                    schema_cls
+                )
+                for meta_key in ("title", "description"):
+                    value = _resolve_schema_meta_string(schema_cls, meta_key)
+                    if value is not None:
+                        wrapped_dumped[meta_key] = value
+                self._nested_schema_classes[name] = wrapped_dumped
+                self._nested_schema_classes.update(
+                    wrapped_nested._nested_schema_classes
+                )
+            variants.append(
+                {
+                    "$ref": "#/{path}/{name}".format(
+                        path=self.definitions_path, name=name
+                    )
+                }
+            )
+        return variants
+
     def dump(self, obj, **kwargs) -> typing.Dict[str, typing.Any]:
         """Render `obj` as a JSON Schema dict.
 
@@ -686,7 +745,28 @@ class JSONSchema(Schema):
         `$ref`).
         """
         self.obj = obj
+        if ALLOW_ONEOFSCHEMA and isinstance(obj, OneOfSchema):
+            return self._dump_oneof_root(obj)
         return super().dump(obj, **kwargs)
+
+    def _dump_oneof_root(self, obj) -> typing.Dict[str, typing.Any]:
+        """Top-level dump for a `OneOfSchema` instance. Emits a `oneOf`
+        envelope referencing each registered variant. Honors `many=True`
+        by wrapping in an array."""
+        variants = self._register_oneof_variants(obj)
+        body = {"oneOf": variants}
+        if self.nested:
+            return body
+        root = {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            self.definitions_path: self._nested_schema_classes,
+        }
+        if getattr(obj, "many", False):
+            root["type"] = "array"
+            root["items"] = body
+        else:
+            root.update(body)
+        return root
 
     @post_dump
     def wrap(self, data, **_) -> typing.Dict[str, typing.Any]:
