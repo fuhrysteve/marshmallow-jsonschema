@@ -721,6 +721,29 @@ class JSONSchema(Schema):
                 "`oneOf` with zero variants. Add at least one entry to "
                 "`type_schemas`.".format(oneof_obj.__class__.__name__)
             )
+        oneof_cls_name = oneof_obj.__class__.__name__
+        in_progress = getattr(self, "_oneof_in_progress", None)
+        if in_progress is None:
+            in_progress = set()
+            self._oneof_in_progress = in_progress
+        if oneof_cls_name in in_progress:
+            # A variant transitively references its own OneOfSchema.
+            # Variants are inlined (no shared definition to $ref back
+            # to), so the natural code path would recurse forever.
+            # Raise a clear error instead of stack-overflowing.
+            raise UnsupportedValueError(
+                "Recursive OneOfSchema {!r} is not supported: a variant "
+                "references the same OneOfSchema, and variants are inlined "
+                "rather than registered as a definition that can be "
+                "$ref'd back to.".format(oneof_cls_name)
+            )
+        in_progress.add(oneof_cls_name)
+        try:
+            return self._build_oneof_variants_unguarded(oneof_obj, in_progress)
+        finally:
+            in_progress.discard(oneof_cls_name)
+
+    def _build_oneof_variants_unguarded(self, oneof_obj, in_progress):
         type_field = oneof_obj.type_field
         variants = []
         for type_value, schema_cls in oneof_obj.type_schemas.items():
@@ -729,6 +752,9 @@ class JSONSchema(Schema):
                 props_ordered=self.props_ordered,
                 definitions_path=self.definitions_path,
             )
+            # Share the recursion guard set so re-entry is detected
+            # across the wrapped instance's own dump pipeline.
+            wrapped_nested._oneof_in_progress = in_progress
             variant_schema = wrapped_nested.dump(schema_cls())
             variant_schema["additionalProperties"] = _resolve_additional_properties(
                 schema_cls

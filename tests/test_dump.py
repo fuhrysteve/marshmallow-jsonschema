@@ -898,6 +898,9 @@ def test_oneofschema_generated_schema_validates_wire_output():
 
     schema = JSONSchema().dump(ShapeSchema())
 
+    # The generated schema must itself be a valid Draft-7 schema.
+    jsonschema_lib.Draft7Validator.check_schema(schema)
+
     # Valid wire formats pass.
     jsonschema_lib.validate({"type": "triangle", "base": 3.0, "height": 4.0}, schema)
     jsonschema_lib.validate({"type": "circle", "radius": 5.0}, schema)
@@ -1070,6 +1073,25 @@ def test_oneofschema_meta_title_and_description_propagate():
     field_schema = nested_dumped["definitions"]["Container"]["properties"]["thing"]
     assert field_schema["title"] == "Polymorphic Thing"
     assert field_schema["description"] == "Either an A or something else later."
+
+
+def test_oneofschema_recursive_raises_clear_error():
+    """A OneOfSchema whose variant transitively references the same
+    OneOfSchema would naturally recurse forever (variants are inlined,
+    not registered as a $ref-able definition). Raise a clear error
+    instead of stack-overflowing."""
+    from marshmallow_oneofschema import OneOfSchema
+    from marshmallow_jsonschema.exceptions import UnsupportedValueError
+
+    class Node(Schema):
+        name = fields.String()
+        children = fields.List(fields.Nested(lambda: Tree()))
+
+    class Tree(OneOfSchema):
+        type_schemas = {"node": Node}
+
+    with pytest.raises(UnsupportedValueError, match="Recursive OneOfSchema"):
+        JSONSchema().dump(Tree())
 
 
 def test_oneofschema_variant_field_collides_with_discriminator_raises():
