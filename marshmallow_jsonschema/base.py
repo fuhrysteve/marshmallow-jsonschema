@@ -146,6 +146,27 @@ FIELD_VALIDATORS = {
 }
 
 
+def _by_value_enum_strings(enum_cls) -> typing.List[str]:
+    """Return the string values of an enum for use as JSON Schema `enum`
+    when the field is configured to serialize by value.
+
+    Restricted to string-valued enums (the common
+    `class MyEnum(str, Enum): X = "x"` pattern). Mixed or non-string
+    values raise `NotImplementedError` because emitting them would
+    contradict our default `type: "string"` mapping for enum fields.
+    Closes #156.
+    """
+    values = [member.value for member in enum_cls]
+    if not all(isinstance(v, str) for v in values):
+        raise NotImplementedError(
+            "JSON Schema for by-value enums currently requires all values to "
+            "be strings; got types %s. Use a `class MyEnum(str, Enum)` "
+            "pattern, or load by name instead."
+            % sorted({type(v).__name__ for v in values})
+        )
+    return values
+
+
 def _is_json_serializable(value) -> bool:
     """Return True if `value` can be emitted into a JSON schema directly.
 
@@ -345,11 +366,7 @@ class JSONSchema(Schema):
         assert ALLOW_MARSHMALLOW_ENUM and isinstance(field, EnumField)
 
         if field.load_by == LoadDumpOptions.value:
-            # Python allows enum values to be almost anything, so it's easier to just load from the
-            # names of the enum's which will have to be strings.
-            raise NotImplementedError(
-                "Currently do not support JSON schema for enums loaded by value"
-            )
+            return _by_value_enum_strings(field.enum)
 
         return [value.name for value in field.enum]
 
@@ -357,11 +374,7 @@ class JSONSchema(Schema):
         assert ALLOW_NATIVE_ENUM and isinstance(field, NativeEnumField)
 
         if field.by_value:
-            # Python allows enum values to be almost anything, so it's easier to just load from the
-            # names of the enum's which will have to be strings.
-            raise NotImplementedError(
-                "Currently do not support JSON schema for enums loaded by value"
-            )
+            return _by_value_enum_strings(field.enum)
 
         return [value.name for value in field.enum]
 
@@ -691,9 +704,19 @@ class JSONSchema(Schema):
                 data[meta_key] = value
 
         self._nested_schema_classes[name] = data
-        root = {
+        ref = "#/{path}/{name}".format(path=self.definitions_path, name=name)
+        # `Schema(many=True)` describes a list of objects rather than a
+        # single one; emit Draft-7's array envelope so consumers don't
+        # have to post-process the output. Closes #92.
+        if getattr(self.obj, "many", False):
+            return {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                self.definitions_path: self._nested_schema_classes,
+                "type": "array",
+                "items": {"$ref": ref},
+            }
+        return {
             "$schema": "http://json-schema.org/draft-07/schema#",
             self.definitions_path: self._nested_schema_classes,
-            "$ref": "#/{path}/{name}".format(path=self.definitions_path, name=name),
+            "$ref": ref,
         }
-        return root

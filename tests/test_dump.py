@@ -766,6 +766,89 @@ def test_field_subclass():
         _ = validate_and_dump(schema)
 
 
+def test_dump_many_emits_top_level_array():
+    """`Schema(many=True)` should produce a top-level array envelope
+    rather than the single-object `$ref` form. Closes #92."""
+
+    class UserSchema(Schema):
+        name = fields.String()
+        age = fields.Integer()
+
+    dumped = JSONSchema().dump(UserSchema(many=True))
+    assert dumped["type"] == "array"
+    assert dumped["items"] == {"$ref": "#/definitions/UserSchema"}
+    # The single-object `$ref` should NOT be at the root any more.
+    assert "$ref" not in dumped
+    # The definition itself is unchanged.
+    assert "UserSchema" in dumped["definitions"]
+
+
+def test_dump_single_unchanged_by_many_change():
+    """Sanity: `Schema()` (single) keeps the existing root shape with
+    `$ref` and no `type: array`."""
+
+    class UserSchema(Schema):
+        name = fields.String()
+
+    dumped = JSONSchema().dump(UserSchema())
+    assert dumped["$ref"] == "#/definitions/UserSchema"
+    assert "type" not in dumped
+    assert "items" not in dumped
+
+
+@pytest.mark.skipif(
+    not ALLOW_NATIVE_ENUM, reason="requires marshmallow>=3.18 for native Enum field"
+)
+def test_native_enum_by_value_strings():
+    """`fields.Enum(MyEnum, by_value=True)` where MyEnum's values are
+    strings should emit those values in the `enum` list. Closes #156."""
+
+    class Status(str, Enum):
+        ACTIVE = "active"
+        INACTIVE = "inactive"
+
+    class S(Schema):
+        status = NativeEnumField(Status, by_value=True)
+
+    prop = validate_and_dump(S())["definitions"]["S"]["properties"]["status"]
+    assert sorted(prop["enum"]) == ["active", "inactive"]
+    assert prop["type"] == "string"
+
+
+@pytest.mark.skipif(
+    not ALLOW_NATIVE_ENUM, reason="requires marshmallow>=3.18 for native Enum field"
+)
+def test_native_enum_by_value_non_strings_raises():
+    """A by-value enum whose values aren't all strings should raise
+    `NotImplementedError` with a clear pointer at the `(str, Enum)`
+    workaround."""
+
+    class NumStatus(Enum):
+        ONE = 1
+        TWO = 2
+
+    class S(Schema):
+        n = NativeEnumField(NumStatus, by_value=True)
+
+    with pytest.raises(NotImplementedError) as exc:
+        JSONSchema().dump(S())
+    assert "str" in str(exc.value)
+
+
+def test_marshmallow_enum_by_value_strings():
+    """Same loosening for the third-party `marshmallow_enum.EnumField`."""
+
+    class Status(str, Enum):
+        ACTIVE = "active"
+        INACTIVE = "inactive"
+
+    class S(Schema):
+        status = EnumField(Status, by_value=True)
+
+    prop = validate_and_dump(S())["definitions"]["S"]["properties"]["status"]
+    assert sorted(prop["enum"]) == ["active", "inactive"]
+
+
 def test_unsupported_field_error_points_at_fix():
     """The error raised for an unmappable custom field should tell the
     user how to fix it: subclass an existing field type, or add
