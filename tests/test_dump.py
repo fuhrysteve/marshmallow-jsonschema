@@ -1026,6 +1026,24 @@ def test_oneofschema_variant_nested_refs_preserved():
     assert "Address" in dumped["definitions"]
 
 
+def test_oneofschema_variant_field_collides_with_discriminator_raises():
+    """If a variant declares its own field with the same name as the
+    OneOfSchema's `type_field`, refuse to silently overwrite it - that
+    would mask a real schema mismatch."""
+    from marshmallow_oneofschema import OneOfSchema
+    from marshmallow_jsonschema.exceptions import UnsupportedValueError
+
+    class Variant(Schema):
+        type = fields.String(required=True)
+        payload = fields.Integer()
+
+    class S(OneOfSchema):
+        type_schemas = {"a": Variant}
+
+    with pytest.raises(UnsupportedValueError, match="discriminator"):
+        JSONSchema().dump(S())
+
+
 def test_unsupported_field_error_points_at_fix():
     """The error raised for an unmappable custom field should tell the
     user how to fix it: subclass an existing field type, or add

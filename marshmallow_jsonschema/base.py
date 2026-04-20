@@ -732,6 +732,20 @@ class JSONSchema(Schema):
             # Inject the discriminator field as a const-valued property
             # and add it to required so consumers can rely on it.
             variant_schema.setdefault("properties", {})
+            if type_field in variant_schema["properties"]:
+                # The variant declares its own field with the same name as
+                # the OneOfSchema discriminator. Silently overwriting would
+                # mask a real schema mismatch (the variant's declared type
+                # might not even be a string), so refuse and force the user
+                # to rename one or the other.
+                raise UnsupportedValueError(
+                    "OneOfSchema variant {!r} (type_value={!r}) declares a "
+                    "field named {!r}, which collides with the OneOfSchema "
+                    "discriminator. Rename the field or change "
+                    "`type_field` on the OneOfSchema.".format(
+                        schema_cls.__name__, type_value, type_field
+                    )
+                )
             variant_schema["properties"][type_field] = {
                 "type": "string",
                 "const": type_value,
