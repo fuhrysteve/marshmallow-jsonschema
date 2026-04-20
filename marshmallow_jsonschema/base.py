@@ -636,7 +636,7 @@ class JSONSchema(Schema):
         # `oneOf` over the variants instead. The many / allow_none /
         # metadata wrap below still applies to the resulting schema.
         if ALLOW_ONEOFSCHEMA and isinstance(nested_instance, OneOfSchema):
-            schema = {"oneOf": self._build_oneof_variants(nested_instance)}
+            schema = self._oneof_body(nested_instance)
         else:
             outer_name = obj.__class__.__name__
             # If this is not a schema we've seen, and it's not this schema (checking this for recursive schemas),
@@ -784,16 +784,23 @@ class JSONSchema(Schema):
             return self._dump_oneof_root(obj)
         return super().dump(obj, **kwargs)
 
-    def _dump_oneof_root(self, obj) -> typing.Dict[str, typing.Any]:
-        """Top-level dump for a `OneOfSchema` instance. Emits a `oneOf`
-        envelope referencing each registered variant. Honors `many=True`
-        by wrapping in an array."""
-        variants = self._build_oneof_variants(obj)
-        body: typing.Dict[str, typing.Any] = {"oneOf": variants}
+    def _oneof_body(self, obj) -> typing.Dict[str, typing.Any]:
+        """The `oneOf` envelope dict for a `OneOfSchema` instance,
+        including the schema-level `Meta.title` / `Meta.description` if
+        set. Used both for top-level dumps and for nested-field dumps so
+        Meta surfaces consistently in both positions."""
+        body: typing.Dict[str, typing.Any] = {"oneOf": self._build_oneof_variants(obj)}
         for meta_key in ("title", "description"):
             value = _resolve_schema_meta_string(obj.__class__, meta_key)
             if value is not None:
                 body[meta_key] = value
+        return body
+
+    def _dump_oneof_root(self, obj) -> typing.Dict[str, typing.Any]:
+        """Top-level dump for a `OneOfSchema` instance. Emits a `oneOf`
+        envelope referencing each registered variant. Honors `many=True`
+        by wrapping in an array."""
+        body = self._oneof_body(obj)
         if self.nested:
             return body
         root: typing.Dict[str, typing.Any] = {

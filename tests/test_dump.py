@@ -1042,7 +1042,8 @@ def test_oneofschema_empty_type_schemas_raises():
 def test_oneofschema_meta_title_and_description_propagate():
     """`Meta.title` / `Meta.description` on the OneOfSchema itself should
     appear alongside the `oneOf` envelope, mirroring how they propagate
-    for regular schemas."""
+    for regular schemas. Holds at the document root AND when used as a
+    nested field."""
     from marshmallow_oneofschema import OneOfSchema
 
     class A(Schema):
@@ -1055,9 +1056,20 @@ def test_oneofschema_meta_title_and_description_propagate():
             title = "Polymorphic Thing"
             description = "Either an A or something else later."
 
+    # Top-level dump.
     dumped = JSONSchema().dump(S())
     assert dumped["title"] == "Polymorphic Thing"
     assert dumped["description"] == "Either an A or something else later."
+
+    # Nested-field dump - same Meta should surface at the field site
+    # since the OneOfSchema is inlined there (no separate definition).
+    class Container(Schema):
+        thing = fields.Nested(S)
+
+    nested_dumped = JSONSchema().dump(Container())
+    field_schema = nested_dumped["definitions"]["Container"]["properties"]["thing"]
+    assert field_schema["title"] == "Polymorphic Thing"
+    assert field_schema["description"] == "Either an A or something else later."
 
 
 def test_oneofschema_variant_field_collides_with_discriminator_raises():
