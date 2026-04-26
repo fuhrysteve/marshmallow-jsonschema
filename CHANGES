@@ -1,4 +1,63 @@
-0.15.0 (2026-04-19)
+0.16.0 (2026-04-19)
+    Polymorphic schema support (`marshmallow_oneofschema.OneOfSchema`),
+    top-level array envelopes, by-value string enums, and a handful of
+    correctness fixes from the issue backlog. All changes are additive
+    or bug fixes; one behavior change in how `fields.Raw` is emitted
+    (see Backward compatibility). Python 3.9+, marshmallow 3.13+ /
+    marshmallow 4 requirements unchanged.
+
+    New:
+    - Support `marshmallow_oneofschema.OneOfSchema`. Dumping a
+      `OneOfSchema` (or a `Nested(SomeOneOfSchema)`) emits a JSON
+      Schema `oneOf` over each variant, with the discriminator field
+      pinned to its `const` value. The generated schema actually
+      validates the wire format that `OneOfSchema.dump()` produces -
+      regression-tested via `jsonschema.validate(...)`. Honors
+      `many=True`, custom `type_field`, and the OneOfSchema's own
+      `Meta.title` / `Meta.description`. Empty `type_schemas`,
+      discriminator-name collisions, and recursive variants raise
+      `UnsupportedValueError` with fix-it messages instead of
+      producing broken schemas. Optional install via
+      `pip install marshmallow-jsonschema[oneofschema]`. (#141, #205)
+    - `Schema(many=True)` at the document root now emits a Draft-7
+      array envelope (`{"type": "array", "items": {"$ref": ...}}`)
+      instead of a single-instance schema. Previously consumers had
+      to post-process the output to describe a list. (#92, #204)
+    - `marshmallow.fields.Enum(MyEnum, by_value=True)` is supported
+      when every member's value is a string - the common
+      `class MyEnum(str, Enum)` pattern. Mixed-type or non-string
+      enum values continue to raise `NotImplementedError`. The same
+      handling is applied to `marshmallow_enum.EnumField` configured
+      with `LoadDumpOptions.value`. (#156, #204)
+
+    Fixes:
+    - `fields.Raw` now emits a schema with no `type` constraint, so
+      the dumped schema actually accepts the "any value" wire format
+      the field describes. Previously routed through `str` and emitted
+      `type: string`, which silently rejected dicts, lists, numbers,
+      etc. on the consumer side. See Backward compatibility below.
+      (#120, #206)
+    - `Schema(partial=True)` and `Schema(partial=("name1", "name2"))`
+      are now honored when computing the `required` list - previously
+      the partial setting was ignored and required fields were always
+      emitted. (#112, #202)
+    - `UnsupportedValueError` raised for an unmappable custom field
+      now points the user at the fix: subclass an existing field type,
+      or add a `_jsonschema_type_mapping` method. (#157, #203)
+    - README build-status badge fixed (was pointing at the old Travis
+      CI URL).
+
+    Backward compatibility:
+    - `fields.Raw` output changed from `{"type": "string"}` to a
+      type-less schema. Anyone relying on the previous shape was
+      already getting incorrect validation - the field accepts any
+      JSON value but the schema only allowed strings. User subclasses
+      of `Raw` (`class CustomRaw(fields.Raw): ...`) still flow through
+      the existing `_get_python_type` path and emit `{"type":
+      "string"}` for backwards compatibility; only the literal
+      `fields.Raw` type is special-cased.
+
+
     Feature batch from the open-PR backlog plus marshmallow 4 support.
     All changes are additive or bug fixes; no public API removed or
     renamed. Python 3.9+ requirement unchanged. The `marshmallow<4` upper
