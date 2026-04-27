@@ -30,24 +30,19 @@ test_coverage:
 	pytest --cov-report html --cov-config .coveragerc --cov $(PROJECT)
 
 clean_build_and_dist:
-	if [ -d build/ ]; then \
-		rm -rf build/ dist/ ; \
-	fi
+	rm -rf build/ dist/
 
-sdist: clean_build_and_dist
-	python setup.py sdist
-
-bdist_wheel:
-	pip install -U wheel
-	python setup.py bdist_wheel
+build_pkg: clean_build_and_dist
+	pip install -U build
+	python -m build
 
 twine:
 	pip install -U twine
 
-pypitest: sdist bdist_wheel twine
-	twine upload -r pypitest dist/*
+pypitest: build_pkg twine
+	twine upload -r testpypi dist/*
 
-pypi: sdist bdist_wheel twine
+pypi: build_pkg twine
 	twine upload -r pypi dist/*
 
 
