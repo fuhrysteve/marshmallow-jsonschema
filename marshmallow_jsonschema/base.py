@@ -191,6 +191,18 @@ def _is_json_serializable(value) -> bool:
         return False
 
 
+def _field_default(field):
+    """Return the JSON-schema-representable default of `field`, or `missing`.
+
+    `dump_default` takes precedence (it is what the library already
+    emitted), then `load_default`. Callables are skipped: JSON Schema can't hold them.
+    """
+    for value in (field.dump_default, field.load_default):
+        if value is not missing and not callable(value):
+            return value
+    return missing
+
+
 def _resolve_additional_properties(cls) -> bool:
     meta = cls.Meta
 
@@ -337,9 +349,9 @@ class JSONSchema(Schema):
         if field.dump_only:
             json_schema["readOnly"] = True
 
-        if field.dump_default is not missing and not callable(field.dump_default):
-            if _is_json_serializable(field.dump_default):
-                json_schema["default"] = field.dump_default
+        default = _field_default(field)
+        if default is not missing and _is_json_serializable(default):
+            json_schema["default"] = default
 
         if ALLOW_NATIVE_ENUM and isinstance(field, NativeEnumField):
             json_schema["enum"] = self._get_native_enum_values(field)
@@ -494,9 +506,9 @@ class JSONSchema(Schema):
         # inner picked field happened to derive automatically.
         if field.dump_only:
             schema["readOnly"] = True
-        if field.dump_default is not missing and not callable(field.dump_default):
-            if _is_json_serializable(field.dump_default):
-                schema["default"] = field.dump_default
+        default = _field_default(field)
+        if default is not missing and _is_json_serializable(default):
+            schema["default"] = default
         metadata = field.metadata.get("metadata", {})
         metadata.update(field.metadata)
         for md_key, md_val in metadata.items():
@@ -558,9 +570,9 @@ class JSONSchema(Schema):
         if field.dump_only:
             schema["readOnly"] = True
 
-        if field.dump_default is not missing and not callable(field.dump_default):
-            if _is_json_serializable(field.dump_default):
-                schema["default"] = field.dump_default
+        default = _field_default(field)
+        if default is not missing and _is_json_serializable(default):
+            schema["default"] = default
 
         # NOTE: doubled up to maintain backwards compatibility
         metadata = field.metadata.get("metadata", {})
@@ -696,8 +708,9 @@ class JSONSchema(Schema):
                 continue
             schema[md_key] = md_val
 
-        if field.dump_default is not missing and not callable(field.dump_default):
-            schema["default"] = nested_instance.dump(field.dump_default)
+        default = _field_default(field)
+        if default is not missing:
+            schema["default"] = nested_instance.dump(default)
 
         if field.allow_none:
             schema = {"anyOf": [schema, {"type": "null"}]}
