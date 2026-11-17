@@ -1651,3 +1651,31 @@ def test_dumping_recursive_schema():
     lambda_schema = generate_recursive_schema_with_lambda()
     name_schema = generate_recursive_schema_with_name()
     assert lambda_schema == name_schema
+
+
+def test_load_default_is_emitted_as_default():
+    class S(Schema):
+        mkt = fields.Str(load_default="spot")
+        n = fields.Int(load_default=3)
+
+    props = JSONSchema().dump(S())["definitions"]["S"]["properties"]
+    assert props["mkt"]["default"] == "spot"
+    assert props["n"]["default"] == 3
+
+
+def test_load_default_callable_and_missing_are_skipped():
+    class S(Schema):
+        a = fields.Str(load_default=lambda: "x")
+        b = fields.Str()
+
+    props = JSONSchema().dump(S())["definitions"]["S"]["properties"]
+    assert "default" not in props["a"]
+    assert "default" not in props["b"]
+
+
+def test_dump_default_takes_precedence_over_load_default():
+    class S(Schema):
+        a = fields.Str(dump_default="d", load_default="l")
+
+    props = JSONSchema().dump(S())["definitions"]["S"]["properties"]
+    assert props["a"]["default"] == "d"
